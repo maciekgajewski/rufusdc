@@ -56,7 +56,10 @@ Hub::Hub( Client* pParent, const string& addr )
 		_handlers["$Hello"] = &Hub::commandHello;
 		_handlers["$MyINFO"] = &Hub::commandMyINFO;
 		_handlers["$Quit"] = &Hub::commandQuit;
+		_handlers["$HubTopic"] = &Hub::commandHubTopic;
 	}
+	
+	_state = Disconnected;
 }
 
 // ============================================================================
@@ -66,11 +69,24 @@ Hub::~Hub()
 }
 
 // ============================================================================
+// Changes state
+void Hub::setState( State state )
+{
+	if ( state != _state )
+	{
+		_state = state;
+		signalStateChanged( int(state) );
+	}
+}
+
+// ============================================================================
 // Connects to hub
 shared_ptr<Operation> Hub::connect()
 {
 	string desc = str( format("Connecting to hub %1%") % _address );
 	systemMessage( desc );
+	
+	setState( Connecting );
 	
 	// create connect operation
 	_pConnectOperation = shared_ptr<Operation>( new Operation( desc ) );
@@ -119,7 +135,13 @@ shared_ptr<Operation> Hub::connect()
 // Disconect
 void Hub::disconnect()
 {
+	lock_guard<mutex> guard( _usersMutex );
+
 	systemMessage( "Disconnecting" );
+	
+	_pSocket.reset(); // this will remove and close socket
+	_users.clear();
+	setState( Disconnected );
 }
 
 // ============================================================================
@@ -241,7 +263,7 @@ void Hub::send( const string& msg )
 	s << '|'; // endline
 	
 	// debug
-	cerr << " >>>> sent: " << msg << endl;
+	//cerr << " >>>> sent: " << msg << endl;
 	
 	async_write
 		( *_pSocket
@@ -356,10 +378,11 @@ void Hub::onIncomingMessage( const string& msg )
 	// is comand?
 	if ( msg[0] == '$' )
 	{
-		stringstream ss( msg );
 		string command;
 		list<string> params;
 		
+		/* simple way of splitting - fails o some special chars
+		stringstream ss( msg );
 		ss >> command;
 		while( ss.good() )
 		{
@@ -367,6 +390,37 @@ void Hub::onIncomingMessage( const string& msg )
 			ss >> param;
 			params.push_back( param );
 		}
+		*/
+		
+		// manual method - split by spaces
+		string substr;
+		for( int i = 0; i < msg.length(); i++ )
+		{
+			if ( msg[i] == ' ' )
+			{
+				if ( substr.length() )
+				{
+					if ( command == "" )
+					{
+						command = substr;
+					}
+					else
+					{
+						params.push_back( substr );
+					}
+					substr = "";
+				}
+			}
+			else
+			{
+				substr.push_back( msg[i] );
+			}
+		}
+		if ( substr.length() )
+		{
+			params.push_back( substr );
+		}
+		
 		
 		onIncomingCommand( command, params );
 	}
@@ -392,12 +446,23 @@ void Hub::onIncomingCommand( const string& command, const list<string>& params )
 	{
 		// TODO error
 		cerr << "Unsupported hub command "<< command << endl;
+		BOOST_FOREACH( string p, params )
+		{
+			cerr << " * " << p << endl;
+		}
 		return;
 	}
 	
 	HubCommandHandler handler = hit->second;
 	
-	handler( this, params );
+	try
+	{
+		handler( this, params );
+	}
+	catch( const std::exception& e )
+	{
+		systemMessage( str( format("Error handling command '%1%' : %2%") % command % e.what() ) );
+	}
 }
 
 // ============================================================================
@@ -491,6 +556,8 @@ void Hub::commandHubName( const list<string>& params )
 	if ( params.size() > 0 )
 	{
 		_hubName = params.front();
+		
+		signalNameChnged( _hubName );
 	}
 	else
 	{
@@ -545,12 +612,13 @@ void Hub::commandHello( const list<string>& params )
 		_pConnectOperation->endChange();
 		_pConnectOperation.reset();
 	}
-	_state = LoggedIn;
 	systemMessage( str( format("Logged in to hub %1%") % _hubName ) );
 	
 	sendCommand( "$Version", assign::list_of("1,009") ); // for compatibility only
 	send( "$GetNickList" );
 	sendMyINFO();
+	
+	setState( Connected );
 }
 
 // ============================================================================
@@ -588,19 +656,37 @@ void Hub::sendMyINFO()
 // MyInfo
 void Hub::commandMyINFO( const list<string>& params )
 {
-	if ( params.size() > 2 )
+	lock_guard<mutex> guard( _usersMutex );
+	
+	UserInfo info;
+	
+	try
 	{
-		list<string>::const_iterator it = params.begin();
-		++it; // $ALL, not interesting
-		string nick        = *(it++);
-		string description = *(it++);
-		string other       = *it;
-		
-		cout<<"new user: "<< nick << endl;
+		info.parseMyINFO( params );
 	}
+	catch( const std::exception& e )
+	{
+		// is info acceptable regardless of error?
+		if ( info.nick().length() == 0 )
+		{
+			throw;
+		}
+		cerr << "Recoverable error when parsing user '"<< info.nick() << "' params: " << e.what() << endl;
+	}
+	
+	UserMap::iterator uit = _users.find( info.nick() );
+	
+	// new user?
+	if ( uit == _users.end() )
+	{
+		_users[ info.nick() ] = info ;
+		signalUserAdded( info );
+	}
+	// modified exisintg user
 	else
 	{
-		throw ProtocolException("Hub sent $MyINFO without paramse");
+		uit->second = info; // TODO check if it works
+		signalUserModified( info );
 	}
 }
 
@@ -610,13 +696,17 @@ void Hub::commandQuit( const list<string>& params )
 {
 	if ( params.size() > 0 )
 	{
-		cout<<"user quits: "<< params.front() << endl;
+		lock_guard<mutex> guard( _usersMutex );
+
+		string nick = params.front();
+		
+		_users.erase( _users.find( nick ) );
+		signalUserRemoved( nick );
 	}
 	else
 	{
 		throw ProtocolException("Hub sent $Quit without params");
 	}
-	// TODO
 }
 
 // ============================================================================
@@ -627,5 +717,35 @@ void Hub::commandForceMove( const list<string>& params )
 	disconnect();
 }
 
+// ============================================================================
+// get users
+list<UserInfo> Hub::getUsers()
+{
+	lock_guard<mutex> guard( _usersMutex );
+	
+	list<UserInfo> result;
+	
+	for( UserMap::const_iterator it = _users.begin(); it != _users.end(); ++it )
+	{
+		result.push_back( it->second );
+	}
+
+	return result;
+}
+
+// ============================================================================
+// Hub topic
+void Hub::commandHubTopic( const list<string>& params )
+{
+	if ( params.size() > 0 )
+	{
+		_hubTopic = params.front();
+		signalTopicChnged( _hubTopic );
+	}
+	else
+	{
+		throw ProtocolException("Hub sent HubTopic without params");
+	}
+}
 
 } // namespace

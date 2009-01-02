@@ -13,6 +13,8 @@ set(
 	client.cpp
 	clientthread.cpp
 	hub.cpp
+	usermodel.cpp
+	userinfo.cpp
 )
 
 kde4_add_ui_files(
@@ -27,6 +29,7 @@ include_directories( ${KDE4_INCLUDES} ${RUFUSDC_SOURCE_DIR} )
 link_directories( ${RUFUSDC_BINARY_DIR}/rufusdc )
 
 set( CMAKE_CXX_FLAGS -fexceptions ) # ugly and non-portable. I liked the qmake's way of doing this better
+set( CMAKE_CXX_FLAGS -O0 )
 kde4_add_executable(kgui ${SOURCES})
 
 

@@ -16,8 +16,12 @@
 #ifndef KRUFUSDCHUBWIDGET_H
 #define KRUFUSDCHUBWIDGET_H
 
+// Qt
 #include <QWidget>
+#include <QTimer>
 
+// local
+#include "usermodel.h"
 #include "ui_hubwidget.h"
 
 namespace KRufusDc
@@ -41,10 +45,20 @@ public:
 private slots:
 
 	void onHubMessage( int type, const QString& msg );
+	
+	/// Periodically updates user list
+	void updateUsers();
+	
+	/// Initialies user list
+	void populateUsers();
 
 private:
-
-	Hub* _pHub;   ///< Hub wrapper
+	
+	Hub*       _pHub;      ///< Hub wrapper
+	UserModel  _userModel; ///< Data model for user list
+	
+	/// Timer used to periodically update user list
+	QTimer    _userUpdateTimer;
 };
 
 }

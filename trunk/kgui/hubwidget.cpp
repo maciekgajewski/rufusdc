@@ -22,6 +22,9 @@
 namespace KRufusDc
 {
 
+static const int USERLIST_POPULATE_DELAY = 3000; // delay between widget creation and user list population [ms]
+static const int USERLIST_UPDATE_INTERVAL = 3000; // how often user list should be updated [ms]
+
 
 // ============================================================================
 // Constructor
@@ -34,7 +37,13 @@ HubWidget::HubWidget( Hub* pHub, QWidget* parent, Qt::WindowFlags f )
 	
 	setupUi( this );
 	
+	_userUpdateTimer.setInterval( USERLIST_UPDATE_INTERVAL );
+	
 	connect( pHub, SIGNAL( hubMessage(int,QString)), SLOT( onHubMessage(int,QString) ) );
+	connect( & _userUpdateTimer, SIGNAL(timeout()), SLOT(updateUsers()) );
+	
+	// give hub some time to get user data
+	QTimer::singleShot( USERLIST_POPULATE_DELAY, this, SLOT(populateUsers()) );
 }
 
 // ============================================================================
@@ -60,5 +69,43 @@ void HubWidget::onHubMessage( int type, const QString& msg )
 	pChat->append( msg );
 }
 
+// ============================================================================
+// Populate users
+void HubWidget::populateUsers()
+{
+	QList<UserInfo> users = _pHub->anchor()->getUsers();
+	_userModel.populate( users );
+	
+	pUsers->setModel( & _userModel );
+	
+	// resize columns to content
+	for( int i = 0; i < _userModel.columnCount(); i++ )
+	{
+		pUsers->resizeColumnToContents( i );
+	}
+	
+	_userUpdateTimer.start();
+}
+
+// ============================================================================
+// Update users
+void HubWidget::updateUsers()
+{
+	QMap< QString, UserInfo > added;
+	QMap< QString, UserInfo > modified;
+	QSet< QString>             removed;
+	
+	_pHub->anchor()->getChangedUsers( added, modified, removed );
+	
+	//qDebug("Updatng users: added: %d, removed: %d, modieifed: %d", added.size(), removed.size(), modified.size() );
+	
+	_userModel.update( added, modified, removed );
+	
+	// resize columns to content
+	for( int i = 0; i < _userModel.columnCount(); i++ )
+	{
+		pUsers->resizeColumnToContents( i );
+	}
+}
 
 }

@@ -20,6 +20,14 @@
 #include <boost/shared_ptr.hpp>
 
 #include <QObject>
+#include <QString>
+#include <QMap>
+#include <QSet>
+#include <QMutex>
+
+#include "rufusdc/userinfo.h"
+
+#include "userinfo.h"
 
 namespace RufusDc
 {
@@ -60,6 +68,15 @@ public:
 	
 	/// Disconnects hub
 	void disconnect();
+	
+	/// Parent Client
+	Client* parent() const { return _pParent; }
+	
+	/// Hub implementation
+	shared_ptr<RufusDc::Hub>& hub() { return _pHub; }
+	
+	// TODO I don't like it. IT shopuld be hidden
+	ClientThreadHubAnchor* anchor() const  { return _thread; }
 
 signals:
 
@@ -90,17 +107,52 @@ private:
 /// Subobject living in worker thread
 class ClientThreadHubAnchor : public QObject
 {
-	Q_OBJECT
+Q_OBJECT
+
+public:
+	ClientThreadHubAnchor( Hub* parent, QObject* qparent = 0 );
 	
-	public:
-		ClientThreadHubAnchor( QObject* parent = 0 ) : QObject(parent) {}
-		
-		/// Boost slot - called from within worker thread
-		void wtMessage( int type, const std::string& msg );
-	signals:
-		/// Boost slot - called from within worker thread
-		void signalWtMessage( int type, const QString& msg );
+	/// Sets encoding used to convert incoming messages to QString's unicode.
+	void setHubEncoding( const QByteArray& name );
+	
+	/// Returns all users currently connected to hub
+	/// @returns User list sorted by nick (case-insensitive)
+	QList<UserInfo> getUsers();
+
+	/// Gets changed user containers. Clears internal buffers
+	void getChangedUsers
+		( QMap< QString, UserInfo >&   added
+		, QMap< QString, UserInfo >&   modified
+		, QSet< QString>&               removed
+		);
+	
+	// boost slots
+	
+	/// Boost slot - called from within worker thread
+	void wtMessage( int type, const std::string& msg );
+	
+	void wtUserAdded( const RufusDc::UserInfo& info );
+	void wtUserModified( const RufusDc::UserInfo& info );
+	void wtUserRemoved( const std::string& nick );
+	
+signals:
+	/// Boost slot - called from within worker thread
+	void signalWtMessage( int type, const QString& msg );
+
+private:
+
+	QTextCodec* _pCodec; ///< Text coded used to decode incoming messages
+	
+	Hub* _pParent; ///< Parent
+	
+	// user change tracking
+	QMap< QString, UserInfo > _addedUsers;
+	QMap< QString, UserInfo > _modifiedUsers;
+	QSet< QString> _removedUsers;
+	
+	QMutex _userMutex;
 };
+
 
 }
 

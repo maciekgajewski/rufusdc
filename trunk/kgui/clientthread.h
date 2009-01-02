@@ -61,9 +61,12 @@ public slots:
 	// cross-thread slots
 	void slotConnectHub( const QString& addr );
 	void slotDisconnectHub( const QString& addr );
+	
 	/// Runs client form within the message loop
 	void runClient();
 	
+	/// Stops client ant hte entire thread
+	void stopClient();
 
 protected:
 
@@ -82,6 +85,8 @@ private:
 	RufusDc::Client* _pClient;
 	
 	boost::asio::deadline_timer* _pTimer;
+	
+	bool _stopped; ///< STOP flag
 
 };
 

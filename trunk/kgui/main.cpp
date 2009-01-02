@@ -50,6 +50,8 @@ int main(int argc, char** argv )
 	QTimer::singleShot( 0, &client, SLOT(start()) ); // start client from within event loop	
 
 
+	QObject::connect( &app, SIGNAL(aboutToQuit()), &client, SLOT(stop()) );
+
 	return app.exec();
 }
 

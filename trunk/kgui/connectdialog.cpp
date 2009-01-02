@@ -29,6 +29,7 @@ ConnectDialog::ConnectDialog( QWidget* parent, Qt::WindowFlags f )
 {
 	setupUi( this );
 	buttonBox->button( QDialogButtonBox::Ok )->setEnabled( false );
+	address->setHistoryItems( QStringList() << "hubdc.lanet.net.pl:4012" ); // for debugging
 }
 
 // ============================================================================

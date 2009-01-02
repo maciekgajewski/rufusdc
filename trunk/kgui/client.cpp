@@ -14,7 +14,11 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
+#include <unistd.h>
+
 #include "rufusdc/client.h"
+
+#include <QTimer>
 
 #include "hub.h"
 
@@ -34,6 +38,15 @@ Client::Client( QObject *parent )
 // Constructor
 Client::~Client()
 {
+	_thread.quit();
+}
+
+// ============================================================================
+// Stop
+void Client::stop()
+{
+	emit stopThread();
+	sleep(1); // give thread some time to die
 }
 
 // ============================================================================
@@ -44,6 +57,8 @@ void Client::start()
 	_thread.moveToThread( & _thread );
 	
 	connect( this, SIGNAL(startThread()), &_thread, SLOT(runClient()) );
+	connect( this, SIGNAL(stopThread()), &_thread, SLOT(stopClient()) );
+	
 	connect( this, SIGNAL(signalConnectHub(QString)), &_thread, SLOT(slotConnectHub(QString)) );
 	connect( this, SIGNAL(signalDisconnectHub(QString)), &_thread, SLOT(slotDisconnectHub(QString)) );
 	

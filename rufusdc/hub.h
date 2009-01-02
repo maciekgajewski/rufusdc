@@ -17,13 +17,16 @@
 #define RUFUSDCHUB_H
 
 #include <string>
+#include <map>
 
 #include <boost/asio.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/function.hpp>
 #include <boost/signal.hpp>
+#include <boost/thread/mutex.hpp>
 
 #include "operation.h"
+#include "userinfo.h"
 
 using namespace std;
 using namespace boost;
@@ -50,9 +53,9 @@ class Hub
 		/// Hub connection state
 		enum State
 		{
-			Disconected,   ///< Disconnected
-			Connected,     ///< Connected, but not logged in
-			LoggedIn,      ///< Logged in
+			Disconnected,  ///< Disconnected, or failed to connect
+			Connecting,    ///< Attepting to connect
+			Connected,     ///< Connected and logged in.
 		};
 	
 		virtual ~Hub();
@@ -71,8 +74,17 @@ class Hub
 		
 		// signals
 		
-		boost::signal< void (const string&) > signalChatMessage;
-		boost::signal< void (const string&) > signalSystemMessage;
+		boost::signal< void (int) > signalStateChanged;             ///< Conection state changed
+		
+		boost::signal< void (const string&) > signalChatMessage;    ///< Chat message incoming
+		boost::signal< void (const string&) > signalSystemMessage;  ///< system message
+		
+		boost::signal< void (const UserInfo&) > signalUserAdded;    ///< New user added to user list
+		boost::signal< void (const UserInfo&) > signalUserModified; ///< User modified on user list
+		boost::signal< void (const string&) >   signalUserRemoved;  ///< User remved from user list
+		
+		boost::signal< void (const string&) > signalNameChnged;     ///< Hub name changed
+		boost::signal< void (const string&) > signalTopicChnged;    ///< Hub topic changed
 		
 		// state
 		
@@ -89,10 +101,22 @@ class Hub
 		string hubName() const { return _hubName; }
 		
 		/**
+		 * @brief Returns hub topic
+		 * @return Hub topic, as sent by hub.
+		 */
+		string hubTopic() const { return _hubName; }
+		
+		/**
 		 * @brief Returns hub address
 		 * @return Hub addres, as sent in constructor
 		 */
 		string address() const { return _address; }
+		
+		/**
+		 * @brief Returns list of currently connected users
+		 * @return List of users
+		 */
+		list<UserInfo> getUsers();
 	
 	private:
 		
@@ -179,6 +203,13 @@ class Hub
 		 * @param msg message.
 		 */
 		void systemMessage( const string& msg );
+		
+		/**
+		 * @brief Changes state
+		 * This emits signalStateChanged
+		 * @param state new state.
+		 */
+		void setState( State state );
 
 		/// Parent object
 		Client* _pParent;
@@ -205,9 +236,20 @@ class Hub
 		
 		string _hubName;	///< Hub name, as send by hub.
 		State  _state;      ///< Hub connection state
+		string _hubTopic;   ///< Hub topic
+		
+		/// User database type
+		typedef map<string, UserInfo > UserMap;
+		
+		/// Users database. nick is the key
+		UserMap _users;
+		
+		/// Mutex guarding _users
+		boost::mutex _usersMutex;
 		
 		// operations
 		
+		// TODO remove?
 		shared_ptr<Operation> _pConnectOperation;
 		
 		// async handles
@@ -256,6 +298,7 @@ class Hub
 		void commandMyINFO( const list<string>& params );
 		void commandQuit( const list<string>& params );
 		void commandForceMove( const list<string>& params );
+		void commandHubTopic( const list<string>& params );
 };
 
 }

@@ -40,9 +40,9 @@ static const int PROCESS_EVENTS_INTERVAL = 1000; // event proceesing interval [m
 ClientThread::ClientThread( QObject *parent )
 		: QThread( parent )
 {
-	qDebug("parent thread: %u", int(QThread::currentThreadId()) );
 	_pClient = new RufusDc::Client();
 	_pTimer = NULL;
+	_stopped = false;
 }
 
 // ============================================================================
@@ -55,10 +55,7 @@ ClientThread::~ClientThread()
 // Thread routine
 void ClientThread::run()
 {
-	//qDebug("Client started, tid: %u", int(QThread::currentThreadId()) );
-	//put message in message loop
-	//QTimer::singleShot( 0, this, SLOT(runClient()) );
-	
+	// TODO remove this method if still empty
 	//dive into endelss message loop
 	exec();
 }
@@ -82,8 +79,20 @@ void ClientThread::runClient()
 	forever
 	{
 		_pClient->run();
+		if ( _stopped )
+		{
+			break;
+		}
 		msleep(1000); // this parameter should be tuned
 	}
+}
+
+// ============================================================================
+// Stop client
+void ClientThread::stopClient()
+{
+	_stopped = true;
+	_pClient->ioService().stop();
 }
 
 // ============================================================================

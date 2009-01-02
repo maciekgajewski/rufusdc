@@ -9,6 +9,7 @@ set(
 	hub.cpp
 	operation.cpp
 	adcmessage.cpp
+	userinfo.cpp
 )
 
 

@@ -64,6 +64,13 @@ public slots:
 	 */
 	void start();
 	
+	
+	/**
+	 * @brief Stops the client.
+	 * It stops undelrying thread. Call this before destroying client.
+	 */
+	void stop();
+	
 signals:
 
 	// cross-threads signals
@@ -71,6 +78,7 @@ signals:
 	void signalConnectHub( const QString& addr );
 	void signalDisconnectHub( const QString& addr );
 	void startThread();
+	void stopThread();
 
 private:
 

@@ -14,11 +14,15 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
+#include <stdexcept>
+#include <iostream>
+
 // KDE
 #include <KApplication>
 #include <KAboutData>
 #include <KCmdLineArgs>
 #include <QTimer>
+#include <QThreadPool>
 
 #include "client.h"
 #include "mainwindow.h"
@@ -41,18 +45,28 @@ int main(int argc, char** argv )
 	KCmdLineArgs::init( argc, argv, &aboutData );
 	
 	KApplication app;
-	
 	KRufusDc::Client client; // client implementation
 
+	// stop thread from thread pool,
+	// TODO this is possible workaround
+	QThreadPool::globalInstance()->setMaxThreadCount( 0 );
+	
 	KRufusDc::MainWindow* pWin = new KRufusDc::MainWindow( &client );
 	pWin->show();
 
 	QTimer::singleShot( 0, &client, SLOT(start()) ); // start client from within event loop	
 
-
+	// intercept app quit event
 	QObject::connect( &app, SIGNAL(aboutToQuit()), &client, SLOT(stop()) );
 
-	return app.exec();
+	try
+	{
+		return app.exec();
+	}
+	catch( const std::exception& e )
+	{
+		std::cerr << "Runaway exception: " << e.what() << std::endl;
+	}
 }
 
 // EOF

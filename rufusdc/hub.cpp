@@ -16,50 +16,45 @@
 
 // TEST: hubdc.lanet.net.pl:4012
 
+//std
 #include <cassert>
 #include <sstream>
 
+// boost
 #include <boost/regex.hpp>
 #include <boost/format.hpp>
 #include <boost/bind.hpp>
 #include <boost/foreach.hpp>
 #include <boost/assign/list_of.hpp>
 
-
+// local
 #include "protocolexception.h"
 #include "client.h"
+#include "downloadrequest.h"
 
 #include "hub.h"
 
 namespace RufusDc
 {
 
-map< string, Hub::HubCommandHandler > Hub::_handlers;
-
 // ============================================================================
 // Constructor
 Hub::Hub( Client* pParent, const string& addr )
-	: _pParent( pParent )
-	, _address( addr )
+	: Connection( pParent, addr )
 {
-	assert( pParent );
-	
 	// init handlers
-	if ( _handlers.empty() )
-	{
-		_handlers["$Lock"] = &Hub::commandLock;
-		_handlers["$HubName"] = &Hub::commandHubName;
-		_handlers["$ValidateDenide"] = &Hub::commandValidateDenide;
-		_handlers["$GetPass"] = &Hub::commandGetPass;
-		_handlers["$LogedIn"] = &Hub::commandLogedIn;
-		_handlers["$BadPass"] = &Hub::commandBadPass;
-		_handlers["$Hello"] = &Hub::commandHello;
-		_handlers["$MyINFO"] = &Hub::commandMyINFO;
-		_handlers["$Quit"] = &Hub::commandQuit;
-		_handlers["$HubTopic"] = &Hub::commandHubTopic;
-	}
-	
-	_state = Disconnected;
+	_handlers["$Lock"]           = boost::bind( &Hub::commandLock, this, _1 );
+	_handlers["$HubName"]        = boost::bind( &Hub::commandHubName, this, _1 );
+	_handlers["$ValidateDenide"] = boost::bind( &Hub::commandValidateDenide, this, _1 );
+	_handlers["$GetPass"]        = boost::bind( &Hub::commandGetPass, this, _1 );
+	_handlers["$LogedIn"]        = boost::bind( &Hub::commandLogedIn, this, _1 );
+	_handlers["$BadPass"]        = boost::bind( &Hub::commandBadPass, this, _1 );
+	_handlers["$Hello"]          = boost::bind( &Hub::commandHello, this, _1 );
+	_handlers["$MyINFO"]         = boost::bind( &Hub::commandMyINFO, this, _1 );
+	_handlers["$Quit"]           = boost::bind( &Hub::commandQuit, this, _1 );
+	_handlers["$HubTopic"]       = boost::bind( &Hub::commandHubTopic, this, _1 );
+	_handlers["$UserIP"]         = boost::bind( &Hub::commandUserIP, this, _1 );
+	_handlers["$Supports"]       = boost::bind( &Hub::commandSupports, this, _1 );
 }
 
 // ============================================================================
@@ -69,458 +64,21 @@ Hub::~Hub()
 }
 
 // ============================================================================
-// Changes state
-void Hub::setState( State state )
-{
-	if ( state != _state )
-	{
-		_state = state;
-		signalStateChanged( int(state) );
-	}
-}
-
-// ============================================================================
-// Connects to hub
-shared_ptr<Operation> Hub::connect()
-{
-	string desc = str( format("Connecting to hub %1%") % _address );
-	systemMessage( desc );
-	
-	setState( Connecting );
-	
-	// create connect operation
-	_pConnectOperation = shared_ptr<Operation>( new Operation( desc ) );
-	
-	_pConnectOperation->setStatusDescription( "Resolving hub address" );
-	
-	try
-	{
-		// translate address string into more concrete data
-		tcp::resolver::query query = parseAddress( _address );
-		
-		_pResolver = shared_ptr<tcp::resolver>( new tcp::resolver( ioService() ) );
-		_pResolver->async_resolve
-			( query
-			, boost::bind
-				( & Hub::onResolve
-				, this
-				, asio::placeholders::error
-				, asio::placeholders::iterator
-				)
-			);
-			
-			
-	}
-	catch( const exception& e )
-	{
-		_pConnectOperation->beginChange();
-			_pConnectOperation->setStatusDescription( e.what() );
-			_pConnectOperation->setStatus( Operation::Failed );
-		_pConnectOperation->endChange();
-		
-		systemMessage( str(format("Error conecting to hub: %1%") % e.what() ) );
-		
-		shared_ptr<Operation> ret = _pConnectOperation;
-		
-		// forget the operation
-		_pConnectOperation.reset();
-		
-		return ret;
-	}
-
-	return _pConnectOperation;
-}
-
-// ============================================================================
 // Disconect
 void Hub::disconnect()
 {
 	lock_guard<mutex> guard( _usersMutex );
-
-	systemMessage( "Disconnecting" );
-	
-	_pSocket.reset(); // this will remove and close socket
 	_users.clear();
-	setState( Disconnected );
+
+	Connection::disconnect();
 }
 
-// ============================================================================
-// IO Service
-io_service& Hub::ioService()
-{
-	return _pParent->ioService();
-}
-
-// ============================================================================
-// Parse adress
-tcp::resolver::query Hub::parseAddress( const string& address ) throw ( std::invalid_argument )
-{
-	// first check
-	if ( address.empty() )
-	{
-		throw std::invalid_argument("hub address empty");
-	}
-	
-	// first attempt: try to parse host:port format
-	regex e1("([\\w\\.]+):(\\d+)");
-	smatch what;
-	if( regex_match( address, what, e1 ) )
-	{
-		string addr;
-		string port;
-		
-		addr = what[1];
-		port = what[2];
-		
-		return tcp::resolver::query( addr, port );
-	}
-	// TODO attept to parse URL here: proto://addr:port
-	throw std::invalid_argument("can't parse hub address");
-	// NADA
-}
-
-// ============================================================================
-// on resolve
-void Hub::onResolve( const system::error_code& err, tcp::resolver::iterator endpoint_iterator)
-{
-	assert( _pConnectOperation );
-	
-	_pConnectOperation->setProgress( 25 ); 
-	
-	if ( ! err )
-	{
-		// resolved! use only first found endpoint
-		_pConnectOperation->setStatusDescription("Connecting to host");
-		// create socket, connect
-		tcp::endpoint endpoint = *endpoint_iterator;
-		
-		_pSocket = shared_ptr<tcp::socket>( new tcp::socket( ioService() ) );
-		
-		_pSocket->async_connect
-			( endpoint
-			, boost::bind
-				( &Hub::onConnect
-				, this
-				, asio::placeholders::error
-				)
-			);
-		
-	}
-	else
-	{
-		// error
-		_pConnectOperation->beginChange();
-			_pConnectOperation->setStatusDescription( err.message() );
-			_pConnectOperation->setStatus( Operation::Failed );
-		_pConnectOperation->endChange();
-		_pConnectOperation.reset();
-		
-		systemMessage( str(format("Error resolving hub address: %1%")%err.message() ) );
-	}
-}
-
-void Hub::onConnect( const system::error_code& err )
-{
-	assert( _pConnectOperation );
-	assert( _pSocket );
-	
-	_pConnectOperation->setProgress( 50 ); 
-	
-	if ( ! err )
-	{
-		_pConnectOperation->setStatusDescription("Logging in");
-		
-		// start connection here
-		
-		// start receiving messages here
-		recv();
-		
-	}
-	else
-	{
-		// error
-		_pConnectOperation->beginChange();
-			_pConnectOperation->setStatusDescription( err.message() );
-			_pConnectOperation->setStatus( Operation::Failed );
-		_pConnectOperation->endChange();
-		_pConnectOperation.reset();
-		
-		systemMessage( str(format("Error connecting to hub: %1%")%err.message() ) );
-	}
-}
-
-// ============================================================================
-// Send
-void Hub::send( const string& msg )
-{
-	if ( ! _pSocket || ! _pSocket->is_open() )
-	{
-		throw invalid_argument("not connected to hub");
-	}
-	
-	ostream s( &_outBuffer );
-	s << msg;
-	s << '|'; // endline
-	
-	// debug
-	//cerr << " >>>> sent: " << msg << endl;
-	
-	async_write
-		( *_pSocket
-		, _outBuffer
-		, boost::bind
-			( &Hub::onSend
-			, this
-			, placeholders::error
-			)
-		);
-}
-
-// ============================================================================
-// Senb command
-void Hub::sendCommand( const string& cmd, const list<string>& params )
-{
-	stringstream ss;
-	ss << cmd;
-	
-	BOOST_FOREACH( string p, params )
-	{
-		ss << " " << p;
-	}
-	
-	send( ss.str() );
-}
-
-// ============================================================================
-// On Send
-void Hub::onSend( const system::error_code& err )
-{
-	// TODO
-}
-
-// ============================================================================
-// Recv
-void Hub::recv()
-{
-	asio::async_read_until
-		( *_pSocket
-		, _inBuffer
-		, char('|')
-		, boost::bind
-			( &Hub::onRecv
-			, this
-			, asio::placeholders::error
-			, placeholders::bytes_transferred
-			)
-		);
-}
-
-// ============================================================================
-// on recv
-void Hub::onRecv( const system::error_code& err, int size )
-{
-	assert( _pSocket );
-	
-	if ( ! err )
-	{
-		stringstream ss;
-		ss << & _inBuffer;
-		//cout << "incoming: " << ss.str() << endl;
-		
-		string incoming = ss.str();
-		for( int i = 0; i < incoming.length(); i++ )
-		{
-			if ( incoming[i] == '|' )
-			{
-				onIncomingMessage( _command );
-				_command = string();
-			}
-			else
-			{
-				_command.push_back( incoming[i] );
-			}
-		}
-		
-		// start receiving next one
-		recv();
-		
-	}
-	else
-	{
-		// error!
-		//cout << "read error\n";
-		disconnect();
-		if ( _pConnectOperation )
-		{
-			_pConnectOperation->beginChange();
-				_pConnectOperation->setStatus( Operation::Failed );
-				_pConnectOperation->setStatusDescription( err.message() );
-			_pConnectOperation->endChange();
-			_pConnectOperation.reset();
-		}
-	}
-}
-
-// ============================================================================
-// Incoming message
-void Hub::onIncomingMessage( const string& msg )
-{
-	// TODO debug
-	//cerr << "msg:" << msg << endl;
-	
-	if ( msg.empty() )
-	{
-		// do nothing
-		//cerr << "Warning: empty message" << endl;
-		return;
-	}
-	
-	// is comand?
-	if ( msg[0] == '$' )
-	{
-		string command;
-		list<string> params;
-		
-		/* simple way of splitting - fails o some special chars
-		stringstream ss( msg );
-		ss >> command;
-		while( ss.good() )
-		{
-			string param;
-			ss >> param;
-			params.push_back( param );
-		}
-		*/
-		
-		// manual method - split by spaces
-		string substr;
-		for( int i = 0; i < msg.length(); i++ )
-		{
-			if ( msg[i] == ' ' )
-			{
-				if ( substr.length() )
-				{
-					if ( command == "" )
-					{
-						command = substr;
-					}
-					else
-					{
-						params.push_back( substr );
-					}
-					substr = "";
-				}
-			}
-			else
-			{
-				substr.push_back( msg[i] );
-			}
-		}
-		if ( substr.length() )
-		{
-			params.push_back( substr );
-		}
-		
-		
-		onIncomingCommand( command, params );
-	}
-	else
-	{
-		onIncomingChat( msg );
-	}
-}
 
 // ============================================================================
 // On incoming chat message.
 void Hub::onIncomingChat( const string& msg )
 {
 	signalChatMessage( msg );
-}
-
-// ============================================================================
-// On incoming command
-void Hub::onIncomingCommand( const string& command, const list<string>& params )
-{
-	map<string,HubCommandHandler>::iterator hit = _handlers.find( command );
-	if ( hit == _handlers.end() )
-	{
-		// TODO error
-		cerr << "Unsupported hub command "<< command << endl;
-		BOOST_FOREACH( string p, params )
-		{
-			cerr << " * " << p << endl;
-		}
-		return;
-	}
-	
-	HubCommandHandler handler = hit->second;
-	
-	try
-	{
-		handler( this, params );
-	}
-	catch( const std::exception& e )
-	{
-		systemMessage( str( format("Error handling command '%1%' : %2%") % command % e.what() ) );
-	}
-}
-
-// ============================================================================
-// Calculate key
-string Hub::calculateKey( const string& lock )
-{
-	string key;
-	int len = lock.length();
-	
-	// NOTE: code pasted from DC reference (http://www.teamfair.info/DC-Protocol.htm)
-	key.push_back( lock[0] xor lock[len-1] xor lock[len-2] xor 5 );
-	
-	for (int i = 1; i < len; i++ )
-		key.push_back(  lock[i] xor lock[i-1] );
-		
-	// nibble-swap
-	for (int i = 0; i < len; i++)
-		key[i] = ((key[i]<<4) & 240) | ((key[i]>>4) & 15);
-		
-	// TODO escape
-	return escape(key);
-}
-
-// ============================================================================
-// escape
-string Hub::escape( const string& str )
-{
-	string result;
-	
-	BOOST_FOREACH( char c, str )
-	{
-		switch( c )
-		{
-			case 0:
-			case 5:
-			case 36:
-			case 96:
-			case 124:
-			case 126:
-			{
-				string seq = boost::str( format("/%%DCN%03d%%/") % int(c) );
-				result +=  seq ;
-				break;
-			}
-				
-			default:
-				result.push_back(c);
-		}
-	}
-	
-	return result;
-}
-
-// ============================================================================
-// System message.
-void Hub::systemMessage( const string& msg )
-{
-	signalSystemMessage( msg );
 }
 
 // ============================================================================
@@ -532,16 +90,9 @@ void Hub::commandLock( const list<string>& params )
 		const string& lock = params.front();
 		
 		string key = calculateKey( lock );
-		sendCommand( "$Supports", assign::list_of("NoGetINFO")("NoHello") ); // advertise other extesions here
+		sendCommand( "$Supports", assign::list_of("NoGetINFO")("NoHello")("UserIP2") ); // advertise other extesions here
 		sendCommand( "$Key", assign::list_of(key) );
 		sendCommand( "$ValidateNick", assign::list_of( escape(_pParent->settings().nick )) );
-		// TODO $Supports
-		
-		// update progress
-		if ( _pConnectOperation )
-		{
-			_pConnectOperation->setProgress(75);
-		}
 	}
 	else
 	{
@@ -570,14 +121,6 @@ void Hub::commandHubName( const list<string>& params )
 void Hub::commandValidateDenide( const list<string>& params )
 {
 	systemMessage( "Nick rejected" );
-	if ( _pConnectOperation )
-	{
-		_pConnectOperation->beginChange();
-			_pConnectOperation->setStatusDescription("Nick rejected");
-			_pConnectOperation->setStatus(Operation::Failed);
-		_pConnectOperation->endChange();
-		_pConnectOperation.reset();
-	}
 	
 	disconnect();
 }
@@ -602,16 +145,6 @@ void Hub::commandBadPass( const list<string>& params )
 void Hub::commandHello( const list<string>& params )
 {
 	// yuppi!
-	
-	if ( _pConnectOperation )
-	{
-		_pConnectOperation->beginChange();
-			_pConnectOperation->setStatusDescription("Connected");
-			_pConnectOperation->setStatus(Operation::Completed );
-			_pConnectOperation->setProgress(100);
-		_pConnectOperation->endChange();
-		_pConnectOperation.reset();
-	}
 	systemMessage( str( format("Logged in to hub %1%") % _hubName ) );
 	
 	sendCommand( "$Version", assign::list_of("1,009") ); // for compatibility only
@@ -741,11 +274,49 @@ void Hub::commandHubTopic( const list<string>& params )
 	{
 		_hubTopic = params.front();
 		signalTopicChnged( _hubTopic );
+		systemMessage( str(format("Hub topic is %1%") % _hubTopic ) );
 	}
 	else
 	{
 		throw ProtocolException("Hub sent HubTopic without params");
 	}
 }
+
+// ============================================================================
+// Request file list
+void Hub::requestFileList( const string& nick )
+{
+	shared_ptr<DownloadRequest> pRequest = shared_ptr<DownloadRequest>( new DownloadRequest );
+	
+	pRequest->setNick( nick );
+	pRequest->setFile( "files.xml.bz2" );
+	
+	_pParent->requestTransfer( this, pRequest );
+}
+
+// ============================================================================
+// User IP
+void Hub::commandUserIP( const list<string>& params )
+{
+	// nothing intresting here
+}
+
+// ============================================================================
+// Supports
+void Hub::commandSupports( const list<string>& params )
+{
+	BOOST_FOREACH( string param, params )
+	{
+		_hubFeatures.insert( param );
+	}
+}
+
+// ============================================================================
+// Connect to me
+void Hub::commandConnectToMe( const list<string>& params )
+{
+	// TODO
+}
+
 
 } // namespace

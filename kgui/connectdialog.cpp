@@ -29,7 +29,8 @@ ConnectDialog::ConnectDialog( QWidget* parent, Qt::WindowFlags f )
 {
 	setupUi( this );
 	buttonBox->button( QDialogButtonBox::Ok )->setEnabled( false );
-	address->setHistoryItems( QStringList() << "hubdc.lanet.net.pl:4012" ); // for debugging
+	address->setHistoryItems
+		( QStringList() << "hubdc.lanet.net.pl:4012" << "planethosting.sytes.net:300" ); // for debugging
 }
 
 // ============================================================================
@@ -45,7 +46,7 @@ void ConnectDialog::accept()
 	QString addr = address->currentText();
 	if ( validate( addr ) )
 	{
-		emit addressAccepted( addr );
+		Q_EMIT addressAccepted( addr );
 		
 		QDialog::accept();
 		

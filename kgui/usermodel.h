@@ -50,6 +50,9 @@ public:
 		, QSet< QString>&               removed
 		);
 	
+	/// direct access to data
+	const UserInfo& getUserInfo( int row ) const { return _users[ row ]; }
+	
 	// model duties
 	
 	/// Item flags

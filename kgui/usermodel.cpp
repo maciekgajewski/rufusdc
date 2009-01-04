@@ -153,7 +153,7 @@ void UserModel::update
 {
 	
 	// first - modify!
-	foreach( QString nick, modified.keys() ) // TODO suboptimal ?
+	Q_FOREACH( QString nick, modified.keys() ) // TODO suboptimal ?
 	{
 		// find by index
 		QMap< QString, int >::iterator indexit = _index.find( nick );
@@ -170,12 +170,12 @@ void UserModel::update
 		// signalize change
 		QModelIndex topLeft = index( idx, 0 );
 		QModelIndex bottomRight = index( idx, columnCount() );
-		emit dataChanged( topLeft, bottomRight );
+		Q_EMIT dataChanged( topLeft, bottomRight );
 	}
 	
 	// remove removed
 	int numRemoved = 0;
-	foreach( QString nick, removed )
+	Q_FOREACH( QString nick, removed )
 	{
 		// find by index
 		QMap< QString, int >::iterator indexit = _index.find( nick );
@@ -203,10 +203,13 @@ void UserModel::update
 	
 	for( addedit = added.begin(); addedit != added.end(); ++addedit )
 	{
-		while( existingit != _users.end() && (*existingit).nick().toLower() < addedit.key() )
+		if ( existingit != _users.end() )
 		{
-			++row;
-			++existingit;
+			while( existingit != _users.end() && (*existingit).nick().toLower() < addedit.key() )
+			{
+				++row;
+				++existingit;
+			}
 		}
 			
 		if (  existingit != _users.end() )
@@ -217,6 +220,8 @@ void UserModel::update
 				
 			beginInsertRows( QModelIndex(), row, row );
 				existingit = _users.insert( existingit, addedit.value() );
+				++row;
+				++existingit;
 			endInsertRows();
 		}
 		else

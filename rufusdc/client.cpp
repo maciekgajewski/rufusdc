@@ -14,9 +14,14 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
+// boost
 #include <boost/bind.hpp>
+#include <boost/assign.hpp>
+#include <boost/format.hpp>
 
+// local
 #include "hub.h"
+#include "filelist.h"
 
 #include "client.h"
 
@@ -26,6 +31,7 @@ namespace RufusDc
 // ============================================================================
 // Constructor
 Client::Client()
+	: _tcpListener( this )
 {
 }
 
@@ -37,16 +43,13 @@ Client::~Client()
 
 // ============================================================================
 // Connect to hub
-shared_ptr<Operation> Client::connectToHub( const string& hubAddr )
+void Client::connectToHub( const string& hubAddr )
 {
 	// create hub. connect to it's signals
 	shared_ptr<Hub> pHub = getHub( hubAddr );
 	
 	// connect!
-	shared_ptr<Operation> operation = pHub->connect();
-	_operations.push_back( operation );
-	
-	return operation;
+	pHub->connect();
 }
 
 // ============================================================================
@@ -103,7 +106,45 @@ Client::Settings::Settings()
 // Run event loop
 void Client::run()
 {
+	// start listening
+	_tcpListener.setPort( _settings.tcpPort );
+	_tcpListener.startListening();
+	
 	_service.run();
+}
+
+// ============================================================================
+// request trransfer
+void Client::requestTransfer( Hub* pHub, const shared_ptr<DownloadRequest>& pRequest )
+{
+	// here decide if we are doing passive or active transfer
+	
+	// active only for now
+	// set up timeout (10 s )
+	pRequest->setExpiryTime( posix_time::second_clock::local_time() + posix_time::seconds(10) );
+	
+	pRequest->signalTransferCompleted.connect( boost::bind( &Client::fileListReceived, this, _1, _2 ) );
+	
+	// send ConnectToMe
+	string addr = str(format( "%1%:%2%") % pHub->localIp() % _tcpListener.port() );
+	
+	pHub->sendCommand( "$ConnectToMe", assign::list_of( pRequest->nick() )( addr ) );
+	
+	// put request into queue
+	_tcpListener.addRequest( pRequest );
+}
+
+// ============================================================================
+// Called when file list is received
+void Client::fileListReceived( vector<char>& data, DownloadRequest* pRequest )
+{
+	cerr << "File list received from user " << pRequest->nick() << endl;
+	
+	shared_ptr<FileList> pList = shared_ptr<FileList>( new FileList() );
+	
+	pList->fromBz2Data( data );
+	
+	// TODO announce, emit signal
 }
 
 } // mamespace

@@ -41,7 +41,7 @@ public:
 	MainWindow( Client* pClient, QWidget* pParent = NULL );
 	virtual ~MainWindow();
 	
-private slots:
+private Q_SLOTS:
 
 	// action handlers
 	

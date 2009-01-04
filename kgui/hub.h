@@ -21,9 +21,6 @@
 
 #include <QObject>
 #include <QString>
-#include <QMap>
-#include <QSet>
-#include <QMutex>
 
 #include "rufusdc/userinfo.h"
 
@@ -41,7 +38,7 @@ using namespace boost;
 
 class Client;
 
-class ClientThreadHubAnchor;
+class ClientThreadHub;
 
 /**
 * @brief Qt wrapper aorund RufusDc::Hub.
@@ -73,17 +70,30 @@ public:
 	Client* parent() const { return _pParent; }
 	
 	/// Hub implementation
-	shared_ptr<RufusDc::Hub>& hub() { return _pHub; }
+	// TODO remove if not needed
+	//shared_ptr<RufusDc::Hub>& hub() { return _pHub; }
 	
 	// TODO I don't like it. IT shopuld be hidden
-	ClientThreadHubAnchor* anchor() const  { return _thread; }
+	ClientThreadHub* anchor() const  { return _thread; }
+	
+	/**
+	 * @brief Requestst file list for user.
+	 * @param nick user's nick
+	 */
+	void requestFileList( const QString& nick );
 
-signals:
+Q_SIGNALS:
+
+	// public signals
 
 	/// Emitted when there is new chat message incoming
 	void hubMessage( int type, const QString& msg );
+	
+	// signals sent to anchor
+	
+	void wtRequestFileList( const QString& nick );
 
-private slots:
+private Q_SLOTS:
 
 	void wtMessage( int type, const QString& msg );
 
@@ -93,7 +103,8 @@ private:
 	Hub( const shared_ptr<RufusDc::Hub>& pHub, Client *parent );
 	
 	/// Underlying RufusDc::Hub object
-	shared_ptr<RufusDc::Hub> _pHub;
+	// TODO remove if not needed
+	//shared_ptr<RufusDc::Hub> _pHub;
 	
 	/// Parent
 	Client* _pParent;
@@ -101,58 +112,8 @@ private:
 	/// Cached hub address
 	QString _address;
 	
-	ClientThreadHubAnchor* _thread; ///< Sub-object living in worker thread
+	ClientThreadHub* _thread; ///< Sub-object living in worker thread
 };
-
-/// Subobject living in worker thread
-class ClientThreadHubAnchor : public QObject
-{
-Q_OBJECT
-
-public:
-	ClientThreadHubAnchor( Hub* parent, QObject* qparent = 0 );
-	
-	/// Sets encoding used to convert incoming messages to QString's unicode.
-	void setHubEncoding( const QByteArray& name );
-	
-	/// Returns all users currently connected to hub
-	/// @returns User list sorted by nick (case-insensitive)
-	QList<UserInfo> getUsers();
-
-	/// Gets changed user containers. Clears internal buffers
-	void getChangedUsers
-		( QMap< QString, UserInfo >&   added
-		, QMap< QString, UserInfo >&   modified
-		, QSet< QString>&               removed
-		);
-	
-	// boost slots
-	
-	/// Boost slot - called from within worker thread
-	void wtMessage( int type, const std::string& msg );
-	
-	void wtUserAdded( const RufusDc::UserInfo& info );
-	void wtUserModified( const RufusDc::UserInfo& info );
-	void wtUserRemoved( const std::string& nick );
-	
-signals:
-	/// Boost slot - called from within worker thread
-	void signalWtMessage( int type, const QString& msg );
-
-private:
-
-	QTextCodec* _pCodec; ///< Text coded used to decode incoming messages
-	
-	Hub* _pParent; ///< Parent
-	
-	// user change tracking
-	QMap< QString, UserInfo > _addedUsers;
-	QMap< QString, UserInfo > _modifiedUsers;
-	QSet< QString> _removedUsers;
-	
-	QMutex _userMutex;
-};
-
 
 }
 

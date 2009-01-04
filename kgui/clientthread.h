@@ -56,7 +56,7 @@ public:
 	 */
 	RufusDc::Client& client() { return *_pClient; }
 	
-public slots:
+public Q_SLOTS:
 
 	// cross-thread slots
 	void slotConnectHub( const QString& addr );
@@ -67,13 +67,6 @@ public slots:
 	
 	/// Stops client ant hte entire thread
 	void stopClient();
-
-protected:
-
-	/// Thread's routine
-	virtual void run();
-	
-private slots:
 
 private:
 

@@ -19,6 +19,7 @@
 // Qt
 #include <QWidget>
 #include <QTimer>
+class QAction;
 
 // local
 #include "usermodel.h"
@@ -42,7 +43,7 @@ public:
 	HubWidget( Hub* pHub, QWidget* parent, Qt::WindowFlags f = 0 );
 	virtual ~HubWidget();
 	
-private slots:
+private Q_SLOTS:
 
 	void onHubMessage( int type, const QString& msg );
 	
@@ -51,7 +52,10 @@ private slots:
 	
 	/// Initialies user list
 	void populateUsers();
-
+	
+	/// Pos up context menu on users lists
+	void usersContextMenu( const QPoint & pos );
+	
 private:
 	
 	Hub*       _pHub;      ///< Hub wrapper
@@ -59,6 +63,12 @@ private:
 	
 	/// Timer used to periodically update user list
 	QTimer    _userUpdateTimer;
+	
+	QAction* _pActionFileList;
+	
+	/// Request file list from user
+	void requestFileList( const QString& nick );
+
 };
 
 }

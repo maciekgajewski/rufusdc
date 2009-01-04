@@ -1,6 +1,7 @@
 project(rufusdc)
 
 cmake_minimum_required(VERSION 2.6)
+set( CMAKE_BUILD_TYPE Debug )
 
 set(
 	SOURCES
@@ -10,6 +11,11 @@ set(
 	operation.cpp
 	adcmessage.cpp
 	userinfo.cpp
+	connection.cpp
+	listener.cpp
+	activedownload.cpp
+	downloadrequest.cpp
+	filelist.cpp
 )
 
 
@@ -23,6 +29,8 @@ target_link_libraries(
 	boost_thread
 	boost_regex
 	boost_signals
+	
+	bz2
 )
 
 

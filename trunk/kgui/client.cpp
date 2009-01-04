@@ -45,8 +45,9 @@ Client::~Client()
 // Stop
 void Client::stop()
 {
-	emit stopThread();
-	sleep(1); // give thread some time to die
+	qDebug("Sending stop signal to the other thread (tid: %d)", int(QThread::currentThreadId()));
+	Q_EMIT stopThread();
+	sleep(2); // give thread some time to die
 }
 
 // ============================================================================
@@ -62,7 +63,7 @@ void Client::start()
 	connect( this, SIGNAL(signalConnectHub(QString)), &_thread, SLOT(slotConnectHub(QString)) );
 	connect( this, SIGNAL(signalDisconnectHub(QString)), &_thread, SLOT(slotDisconnectHub(QString)) );
 	
-	emit startThread();
+	Q_EMIT startThread();
 }
 
 // ============================================================================
@@ -80,14 +81,14 @@ Hub* Client::createHub( const QString addr )
 // Connect hub
 void Client::connectHub( const QString& addr )
 {
-	emit signalConnectHub( addr );
+	Q_EMIT signalConnectHub( addr );
 }
 
 // ============================================================================
 // disconnect hub
 void Client::disconnectHub( const QString& addr )
 {
-	emit signalDisconnectHub( addr );
+	Q_EMIT signalDisconnectHub( addr );
 }
 
 }

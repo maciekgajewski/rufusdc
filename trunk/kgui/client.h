@@ -57,7 +57,7 @@ public:
 	/// Returns pointer to client worker thread
 	ClientThread& clientThread() { return _thread; }
 
-public slots:
+public Q_SLOTS:
 	/**
 	 * @brief Starts the client.
 	 * Start this before doing anything else, bu from within apps event loop
@@ -71,7 +71,7 @@ public slots:
 	 */
 	void stop();
 	
-signals:
+Q_SIGNALS:
 
 	// cross-threads signals
 

@@ -51,46 +51,49 @@ ClientThread::~ClientThread()
 {
 }
 
-// ============================================================================
-// Thread routine
-void ClientThread::run()
-{
-	// TODO remove this method if still empty
-	//dive into endelss message loop
-	exec();
-}
 
 // ============================================================================
 // Run client
 void ClientThread::runClient()
 {
-	//qDebug("runClient, tid: %u", int(QThread::currentThreadId()) );
-
-	Q_ASSERT( _pClient );
-	// ok, the message loop is running
-	
-	// attach method to timer
-	_pTimer = new  boost::asio::deadline_timer
-		( _pClient->ioService()
-		, boost::posix_time::milliseconds( PROCESS_EVENTS_INTERVAL )
-		);
-	_pTimer->async_wait( boost::bind( &ClientThread::onTimer, this ) );
-	
-	forever
+	try
 	{
-		_pClient->run();
-		if ( _stopped )
+		//qDebug("runClient, tid: %u", int(QThread::currentThreadId()) );
+	
+		Q_ASSERT( _pClient );
+		// ok, the message loop is running
+		
+		// attach method to timer
+		_pTimer = new  boost::asio::deadline_timer
+			( _pClient->ioService()
+			, boost::posix_time::milliseconds( PROCESS_EVENTS_INTERVAL )
+			);
+		_pTimer->async_wait( boost::bind( &ClientThread::onTimer, this ) );
+		
+		Q_FOREVER
 		{
-			break;
+			_pClient->run();
+			if ( _stopped )
+			{
+				qDebug("ClientThread: Escaping the endless loop");
+				break;
+			}
+			msleep(1000); // this parameter should be tuned
 		}
-		msleep(1000); // this parameter should be tuned
+		qDebug("ClientThread: Escaped");
 	}
+	catch( const std::exception& e )
+	{
+		std::cerr << "Client thread exception: " << e.what() << std::endl;
+	}
+	quit();
 }
 
 // ============================================================================
 // Stop client
 void ClientThread::stopClient()
 {
+	qDebug("ClientThread: Received stop signal (tid: %d)", int(QThread::currentThreadId()));
 	_stopped = true;
 	_pClient->ioService().stop();
 }

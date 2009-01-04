@@ -18,287 +18,140 @@
 
 #include <string>
 #include <map>
+#include <set>
 
-#include <boost/asio.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/function.hpp>
-#include <boost/signal.hpp>
 #include <boost/thread/mutex.hpp>
 
-#include "operation.h"
 #include "userinfo.h"
-
-using namespace std;
-using namespace boost;
-using namespace boost::asio;
-using namespace boost::asio::ip;
+#include "connection.h"
 
 namespace RufusDc
 {
-
-class AdcMessage;
-class Client;
 
 /**
 * @brief DC hub connection.
 * This object represent DC hub connection.
 * @author Maciek Gajewski <maciej.gajewski0@gmail.com>
 */
-class Hub
+class Hub : public Connection
 {
 	friend class Client;
-	
-	public:
-	
-		/// Hub connection state
-		enum State
-		{
-			Disconnected,  ///< Disconnected, or failed to connect
-			Connecting,    ///< Attepting to connect
-			Connected,     ///< Connected and logged in.
-		};
-	
-		virtual ~Hub();
-		
-		/**
-		 * @brief Connects to hub.
-		 * Does nothing if hub already connected.
-		 * @return Potiner to operation object, whichcan be used to monitor connection status.
-		 */
-		shared_ptr<Operation> connect();
-		
-		/**
-		 * Disconnects.
-		 */
-		void disconnect();
-		
-		// signals
-		
-		boost::signal< void (int) > signalStateChanged;             ///< Conection state changed
-		
-		boost::signal< void (const string&) > signalChatMessage;    ///< Chat message incoming
-		boost::signal< void (const string&) > signalSystemMessage;  ///< system message
-		
-		boost::signal< void (const UserInfo&) > signalUserAdded;    ///< New user added to user list
-		boost::signal< void (const UserInfo&) > signalUserModified; ///< User modified on user list
-		boost::signal< void (const string&) >   signalUserRemoved;  ///< User remved from user list
-		
-		boost::signal< void (const string&) > signalNameChnged;     ///< Hub name changed
-		boost::signal< void (const string&) > signalTopicChnged;    ///< Hub topic changed
-		
-		// state
-		
-		/**
-		 * @brief Returns hub state
-		 * @return Current hub state
-		 */
-		State state() const { return _state; }
-		
-		/**
-		 * @brief Returns hub name
-		 * @return Hub name, as sent by hub.
-		 */
-		string hubName() const { return _hubName; }
-		
-		/**
-		 * @brief Returns hub topic
-		 * @return Hub topic, as sent by hub.
-		 */
-		string hubTopic() const { return _hubName; }
-		
-		/**
-		 * @brief Returns hub address
-		 * @return Hub addres, as sent in constructor
-		 */
-		string address() const { return _address; }
-		
-		/**
-		 * @brief Returns list of currently connected users
-		 * @return List of users
-		 */
-		list<UserInfo> getUsers();
-	
-	private:
-		
-		/**
-		 * @brief Creates hub connection, using specified io service for comunication.
-		 * @param pClient parent
-		 * @param address hub's adress
-		 */
-		explicit Hub( Client* pClient, const string& address );
-		
-		/// Parses address into tcp query
-		///@exception invalid_argument when address can't be parsed
-		static tcp::resolver::query parseAddress( const string& address ) throw ( std::invalid_argument );
-		
-		/**
-		 * @brief Calculates client's key.
-		 * @param lock lock used to calculate key
-		 * @return calculated key
-		 */
-		static string calculateKey( const string& lock );
-		
-		/**
-		 * @brief Escapes string
-		 * Converts vorbodden characters int oappropriate escape sequences.
-		 * @param str raw string
-		 * @return escaped string
-		 */
-		static string escape( const string& str );
-		
-		/**
-		 * @brief Send raw message to hub.
-		 * @param msg message
-		 */
-		void send( const string& msg );
-		
-		/**
-		 * @brief Sends command
-		 * @param cmd command (starting with $)
-		 * @param params command parameters
-		 */
-		void sendCommand( const string& cmd, const list<string>& params );
-		
-		/**
-		 * @brief Sends MyINFO message to hub
-		 * All data needed to construct the message is get from Client
-		 */
-		void sendMyINFO();
-		
-		/**
-		 * @brief Receives messages.
-		 * Starts asynchronous operation, which calls onRecv upon completion.
-		 */
-		void recv();
-		
-		/**
-		 * @brief Returns io_service
-		 * @return io_servide used to commubicate
-		 */
-		io_service& ioService();
-		
-		/**
-		 * @brief Called when message is received.
-		 * Recognizes message, and calls onIcomingCommand or onIncomingChat. 
-		 * @param  msg recieived message
-		 */
-		void onIncomingMessage( const string& msg );
-		
-		/**
-		 * @brief Called when chat comes in.
-		 * @param msg chat message.
-		 */
-		void onIncomingChat( const string& msg );
-		
-		/**
-		 * @brief Called on incoming HUB command.
-		 * @param command command text, always starts with '$'
-		 * @param params command params
-		 */
-		void onIncomingCommand( const string& command, const list<string>& params );
-		
-		/**
-		 * @brief Adds system message.
-		 * This emits signalSystemMessage
-		 * @param msg message.
-		 */
-		void systemMessage( const string& msg );
-		
-		/**
-		 * @brief Changes state
-		 * This emits signalStateChanged
-		 * @param state new state.
-		 */
-		void setState( State state );
 
-		/// Parent object
-		Client* _pParent;
-		
-		/// Hub's address. Never changes
-		string _address;
-		
-		/// Resolver used to resolve hub address
-		shared_ptr<tcp::resolver> _pResolver;
-		
-		/// Connection
-		shared_ptr<tcp::socket> _pSocket;
-		
-		/// Buffer for incoming message
-		asio::streambuf _inBuffer;
-		
-		/// Intermediate buffer, used to assemble command (async_read_until sucks!)
-		string _command;
+public:
 
-		/// Buffer for outgoing message
-		asio::streambuf _outBuffer;
-		
-		// state
-		
-		string _hubName;	///< Hub name, as send by hub.
-		State  _state;      ///< Hub connection state
-		string _hubTopic;   ///< Hub topic
-		
-		/// User database type
-		typedef map<string, UserInfo > UserMap;
-		
-		/// Users database. nick is the key
-		UserMap _users;
-		
-		/// Mutex guarding _users
-		boost::mutex _usersMutex;
-		
-		// operations
-		
-		// TODO remove?
-		shared_ptr<Operation> _pConnectOperation;
-		
-		// async handles
-		
-		
-		/**
-		 * @brief Handles address resolution.
-		 * @param err status code
-		 * @param endpoint_iterator resolved adrress
-		 */
-		void onResolve( const system::error_code& err, tcp::resolver::iterator endpoint_iterator);
-		
-		/**
-		 * @brief Hanldes connection to hub
-		 * @param err status
-		 */
-		void onConnect( const system::error_code& err );
+	virtual ~Hub();
+	
+	/**
+	* @brief Disconnects from hub
+	* Does nothing if hub already disconnected.
+	*/
+	virtual void disconnect();
+	
+	// signals
+	
+	boost::signal< void (const string&) > signalChatMessage;    ///< Chat message incoming
+	
+	boost::signal< void (const UserInfo&) > signalUserAdded;    ///< New user added to user list
+	boost::signal< void (const UserInfo&) > signalUserModified; ///< User modified on user list
+	boost::signal< void (const string&) >   signalUserRemoved;  ///< User remved from user list
+	
+	boost::signal< void (const string&) > signalNameChnged;     ///< Hub name changed
+	boost::signal< void (const string&) > signalTopicChnged;    ///< Hub topic changed
+	
+	// state
+	
+	/**
+	* @brief Returns hub state
+	* @return Current hub state
+	*/
+	State state() const { return _state; }
+	
+	/**
+	* @brief Returns hub name
+	* @return Hub name, as sent by hub.
+	*/
+	string hubName() const { return _hubName; }
+	
+	/**
+	* @brief Returns hub topic
+	* @return Hub topic, as sent by hub.
+	*/
+	string hubTopic() const { return _hubName; }
+	
+	/**
+	* @brief Returns hub address
+	* @return Hub addres, as sent in constructor
+	*/
+	string address() const { return _address; }
+	
+	/**
+	* @brief Returns list of currently connected users
+	* @return List of users
+	*/
+	list<UserInfo> getUsers();
+	
+	/**
+	* @brief Requests file list for specified user.
+	* @param nick user's nick
+	*/
+	void requestFileList( const string& nick );
 
-		/**
-		 * @brief Handles result of 'send' operation.
-		 * @param err status
-		 */
-		void onSend( const system::error_code& err );
-
-		/**
-		 * @brief Handles result of 'recv' operation.
-		 * @param err status
-		 * @param size bytes received
-		 */
-		void onRecv( const system::error_code& err, int size );
-		
-		// command handlers
-		
-		typedef boost::function< void (Hub*, const list<string>&) > HubCommandHandler;
-		
-		/// Mapping between command names and their handlers.
-		static map< string, HubCommandHandler > _handlers;
-		
-		void commandLock( const list<string>& params );
-		void commandHubName( const list<string>& params );
-		void commandValidateDenide( const list<string>& params );
-		void commandGetPass( const list<string>& params );
-		void commandLogedIn( const list<string>& params );
-		void commandBadPass( const list<string>& params );
-		void commandHello( const list<string>& params );
-		void commandMyINFO( const list<string>& params );
-		void commandQuit( const list<string>& params );
-		void commandForceMove( const list<string>& params );
-		void commandHubTopic( const list<string>& params );
+private:
+	
+	/**
+	* @brief Creates hub connection, using specified io service for comunication.
+	* @param pClient parent
+	* @param address hub's adress
+	*/
+	Hub( Client* pClient, const string& address );
+	
+	/**
+	* @brief Sends MyINFO message to hub
+	* All data needed to construct the message is get from Client
+	*/
+	void sendMyINFO();
+	
+	/**
+	* @brief Called when chat comes in.
+	* @param msg chat message.
+	*/
+	virtual void onIncomingChat( const string& msg );
+	
+	// state
+	
+	string _hubName;	///< Hub name, as send by hub.
+	string _hubTopic;   ///< Hub topic
+	
+	/// Hub features, as annunced by hub
+	set<string> _hubFeatures;
+	
+	/// User database type
+	typedef map<string, UserInfo > UserMap;
+	
+	/// Users database. nick is the key
+	UserMap _users;
+	
+	/// Mutex guarding _users
+	boost::mutex _usersMutex;
+	
+	// async handles
+	
+	
+	// command handlers
+	void commandLock( const list<string>& params );
+	void commandHubName( const list<string>& params );
+	void commandValidateDenide( const list<string>& params );
+	void commandGetPass( const list<string>& params );
+	void commandLogedIn( const list<string>& params );
+	void commandBadPass( const list<string>& params );
+	void commandHello( const list<string>& params );
+	void commandMyINFO( const list<string>& params );
+	void commandQuit( const list<string>& params );
+	void commandForceMove( const list<string>& params );
+	void commandHubTopic( const list<string>& params );
+	void commandUserIP( const list<string>& params );
+	void commandSupports( const list<string>& params );
+	void commandConnectToMe( const list<string>& params );
 };
 
 }

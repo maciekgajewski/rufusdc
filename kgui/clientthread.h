@@ -16,14 +16,20 @@
 #ifndef KRUFUSDCCLIENTTHREAD_H
 #define KRUFUSDCCLIENTTHREAD_H
 
+// boost
 #include <boost/asio/deadline_timer.hpp>
+#include <boost/shared_ptr.hpp>
 
+// Qt
 #include <QThread>
+#include <QMutex>
+#include <QList>
 
 namespace RufusDc
 {
 	class Client;
 	class Hub;
+	class FileList;
 }
 
 
@@ -56,6 +62,18 @@ public:
 	 */
 	RufusDc::Client& client() { return *_pClient; }
 	
+	/// Takes file list from corss-thread container.
+	/// Leaves out buffer intouched when no file lists present.
+	void takeFileList( boost::shared_ptr<RufusDc::FileList>& pOut );
+	
+Q_SIGNALS:
+
+	// x-thread signals
+	
+	/// Emitted when file list buffer contains nex file list.
+	/// After receivingm use takeFileList to obtain actualfile lsit from corss-thread container
+	void signalFileListReceived();
+	
 public Q_SLOTS:
 
 	// cross-thread slots
@@ -70,8 +88,13 @@ public Q_SLOTS:
 
 private:
 
+	// boost slots and handlers
+
 	/// Called by ASIO timer
 	void onTimer();
+	
+	/// Called when client recives xml file list
+	void onFileListReceived( const boost::shared_ptr<RufusDc::FileList>& pFileList );
 	
 private:
 
@@ -80,6 +103,9 @@ private:
 	boost::asio::deadline_timer* _pTimer;
 	
 	bool _stopped; ///< STOP flag
+	
+	QMutex _fileListMutex; /// Mutex guarding file lists
+	QList< boost::shared_ptr<RufusDc::FileList> > _fileLists; /// File lists
 
 };
 

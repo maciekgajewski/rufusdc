@@ -89,10 +89,10 @@ private:
 	tcp::acceptor _acceptor; ///< Accepts incoming connection
 	
 	/// Socket for incoming connection
-	shared_ptr<tcp::socket> _pSocket;
+	//shared_ptr<tcp::socket> _pSocket; // TODO wrong!
 	
 	/// Accept handler
-	void onAccept( system::error_code err );
+	void onAccept( shared_ptr<tcp::socket> pSocket, system::error_code err );
 	
 	/// Request accept
 	void accept();

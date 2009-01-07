@@ -36,7 +36,6 @@ Connection::Connection( Client* pClient, const string& address )
 	assert( pClient );
 	_state = Disconnected;
 	_dataTransfer = false;
-	_requestedBytes = 0;
 }
 
 // ============================================================================
@@ -404,10 +403,14 @@ void Connection::recvCommand()
 // Recv
 void Connection::recvData( uint64_t size )
 {
+	uint64_t bytesToReceive = size - _inBuffer.size();
 	// TODO do something if data still in buffer
-	cerr << "recvData: " << _inBuffer.size() << " bytes still in buffer" << endl;
-	
-	_requestedBytes = size;
+	if ( _inBuffer.size() > 0 )
+	{
+		cerr << "recvData: " << _inBuffer.size() << " bytes still in buffer" << endl;
+		_inBuffer.commit( _inBuffer.size() );
+		cerr << "after commit: " << _inBuffer.size()  << endl;
+	}
 	
 	asio::async_read
 		( *_pSocket
@@ -415,6 +418,7 @@ void Connection::recvData( uint64_t size )
 		, boost::bind
 			( &Connection::recvEnoughData
 			, this
+			, bytesToReceive
 			, asio::placeholders::error
 			, placeholders::bytes_transferred
 			)
@@ -515,10 +519,9 @@ void Connection::onIncomingData( vector<char>& buffer )
 
 // ============================================================================
 // Completion condition
-bool Connection::recvEnoughData( const system::error_code& err, int size )
+bool Connection::recvEnoughData( uint64_t requested, const system::error_code& err, int size )
 {
-	//cerr << "Data transfer Completion condition tested: size="<< size <<", requested: " << _requestedBytes << endl;
-	return err || size >= _requestedBytes;
+	return err || size >= requested;
 }
 
 }

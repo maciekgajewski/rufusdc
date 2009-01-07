@@ -86,7 +86,7 @@ void Listener::stopListening()
 
 // ============================================================================
 // on accept
-void Listener::onAccept( const system::error_code err )
+void Listener::onAccept( shared_ptr<tcp::socket> pSocket, const system::error_code err )
 {
 	if ( ! err )
 	{
@@ -100,7 +100,7 @@ void Listener::onAccept( const system::error_code err )
 		if ( ! _requests.empty() )
 		{
 			shared_ptr<ActiveDownload> pDownload 
-				= shared_ptr<ActiveDownload>( new ActiveDownload( _pParent, _pSocket ) );
+				= shared_ptr<ActiveDownload>( new ActiveDownload( _pParent, pSocket ) );
 				
 			pDownload->signalRequest.connect( boost::bind( &Listener::takeRequest, this, _1, _2 ) );
 			
@@ -115,7 +115,7 @@ void Listener::onAccept( const system::error_code err )
 		{
 			// close the connection, wait for better times
 			cerr << "Incoming connection dropped, no one interested\n";
-			_pSocket.reset();
+			//_pSocket.reset(); // if another accept was called in the meantime, we are screwed!
 		}
 	}
 	else
@@ -134,6 +134,17 @@ void Listener::removeCompletedDownloads()
 	{
 		if ( (*it)->state() == Connection::Disconnected )
 		{
+			//BEGIN debug
+			const shared_ptr<DownloadRequest>& rq = (*it)->request();
+			if ( rq )
+			{
+				cerr << "Removing completed download from user " << rq->nick() << endl;
+			}
+			else
+			{
+				cerr << "Removing unassociated download" << endl;
+			}
+			//END debug
 			it = _downloads.erase( it );
 		}
 		else
@@ -161,9 +172,12 @@ void Listener::addRequest( const shared_ptr<DownloadRequest>& pRequest )
 void Listener::accept()
 {
 	// create new socket for incoming connections
+	/*
 	_pSocket = shared_ptr<tcp::socket>( new tcp::socket( _pParent->ioService() ) );
-	
-	_acceptor.async_accept( *_pSocket, boost::bind( &Listener::onAccept, this, placeholders::error ) );
+	// NOTE: wrong! cant use single pointer used by - possibly - multiple accept calls
+	*/
+	shared_ptr<tcp::socket> pSocket( new tcp::socket( _pParent->ioService() ) );
+	_acceptor.async_accept( *pSocket, boost::bind( &Listener::onAccept, this, pSocket, placeholders::error ) );
 }
 
 // ============================================================================

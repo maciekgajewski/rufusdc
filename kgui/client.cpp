@@ -16,9 +16,13 @@
 
 #include <unistd.h>
 
+// rufusdc
 #include "rufusdc/client.h"
+#include "rufusdc/filelist.h"
 
+// Qt
 #include <QTimer>
+#include <QFile>
 
 #include "hub.h"
 
@@ -57,11 +61,15 @@ void Client::start()
 	_thread.start();
 	_thread.moveToThread( & _thread );
 	
+	// ui -> client
 	connect( this, SIGNAL(startThread()), &_thread, SLOT(runClient()) );
 	connect( this, SIGNAL(stopThread()), &_thread, SLOT(stopClient()) );
 	
 	connect( this, SIGNAL(signalConnectHub(QString)), &_thread, SLOT(slotConnectHub(QString)) );
 	connect( this, SIGNAL(signalDisconnectHub(QString)), &_thread, SLOT(slotDisconnectHub(QString)) );
+	
+	// client -> ui
+	connect( &_thread, SIGNAL( signalFileListReceived() ), SLOT( fileListReceived() ) );
 	
 	Q_EMIT startThread();
 }
@@ -89,6 +97,31 @@ void Client::connectHub( const QString& addr )
 void Client::disconnectHub( const QString& addr )
 {
 	Q_EMIT signalDisconnectHub( addr );
+}
+
+// ============================================================================
+// File list received
+void Client::fileListReceived()
+{
+	shared_ptr<RufusDc::FileList> pFileList;
+	
+	_thread.takeFileList( pFileList );
+	
+	if ( pFileList )
+	{
+		Q_EMIT signalFileListReceived( pFileList );
+		
+		// debug
+		const std::string& xmldata = pFileList->xml();
+		
+		QFile dump("filelist.xml");
+		dump.open( QIODevice::WriteOnly | QIODevice::Truncate );
+		dump.write( xmldata.data(), xmldata.length() );
+	}
+	else
+	{
+		qWarning("Client thread announced new file list, but no list present!");
+	}
 }
 
 }

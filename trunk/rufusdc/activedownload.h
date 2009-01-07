@@ -49,6 +49,8 @@ public:
 	/// Signla used to request DownloadRequest obect associated with nick
 	boost::signal< void ( const string&, shared_ptr<DownloadRequest>& ) > signalRequest;
 	
+	/// Request associated with the download. Can be null!
+	const shared_ptr<DownloadRequest>& request() const { return _pRequest; }
 	
 private:
 

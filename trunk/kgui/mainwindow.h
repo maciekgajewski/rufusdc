@@ -16,6 +16,12 @@
 #ifndef KRUFUSDCMAINWINDOW_H
 #define KRUFUSDCMAINWINDOW_H
 
+// boost
+#include <boost/shared_ptr.hpp>
+
+// rufusdc
+#include "rufusdc/filelist.h"
+
 // Qt
 #include <QPointer>
 
@@ -50,6 +56,11 @@ private Q_SLOTS:
 	// other slots
 	
 	void connectToHub( const QString& str ); ///< Connect to hub requested
+	
+	// messages from client
+	
+	/// File list was received
+	void fileListReceived( const boost::shared_ptr<RufusDc::FileList>& pFileList );
 
 private:
 

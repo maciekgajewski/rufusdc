@@ -23,6 +23,7 @@
 #include "client.h"
 #include "connectdialog.h"
 #include "hubwidget.h"
+#include "filelistwidget.h"
 
 #include "mainwindow.h"
 
@@ -41,6 +42,13 @@ MainWindow::MainWindow( Client* pClient, QWidget* pParent )
 	initGui();
 	
 	resize( 800, 600 );
+	
+	// connect to client
+	connect
+		( pClient
+		, SIGNAL(signalFileListReceived( const boost::shared_ptr<RufusDc::FileList>& ))
+		, SLOT(fileListReceived( const boost::shared_ptr<RufusDc::FileList>&))
+		);
 }
 
 // ============================================================================
@@ -95,6 +103,19 @@ void MainWindow::initGui()
 {
 	_pTabs = new KTabWidget( this );
 	setCentralWidget( _pTabs );
+}
+
+// ============================================================================
+// file list received
+void MainWindow::fileListReceived( const boost::shared_ptr<RufusDc::FileList>& pFileList )
+{
+	FileListWidget* pWidget = new FileListWidget( this );
+	pWidget->setFileList( pFileList );
+	
+	QString title = QString( i18n("%1's file list")).arg( pFileList->nick().c_str() );
+	
+	int index = _pTabs->addTab( pWidget, title );
+	_pTabs->setCurrentIndex( index );
 }
 
 }

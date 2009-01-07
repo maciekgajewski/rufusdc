@@ -97,7 +97,7 @@ Client::Settings::Settings()
 	maxDownload  = -1;
 	nick         = "[psiepole]rufusdc";
 	uploadSlots  = 10;
-	tcpPort      = 31996;
+	tcpPort      = 3196;
 	udpPort      = 11455;
 	connection   = "0.5"; // whatever this means
 }
@@ -142,9 +142,19 @@ void Client::fileListReceived( vector<char>& data, DownloadRequest* pRequest )
 	
 	shared_ptr<FileList> pList = shared_ptr<FileList>( new FileList() );
 	
-	pList->fromBz2Data( data );
+	try
+	{
+		pList->fromBz2Data( data );
+		pList->setNick( pRequest->nick() );
+		pList->setHub( pRequest->hub() );
+		
+		signalIncomingFileList( pList );
+	}
+	catch( const std::exception& e )
+	{
+		cerr << "Error decodng file list: " << e.what() << endl;
+	}
 	
-	// TODO announce, emit signal
 }
 
 } // mamespace

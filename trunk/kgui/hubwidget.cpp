@@ -27,10 +27,24 @@
 
 #include "hubwidget.h"
 
+
+//BEGIN debug routeines
+#include <sys/time.h>
+// ============================================================================
+/// Returns current time in ms.
+double getms()
+{
+	struct timeval tv;
+	gettimeofday( &tv, 0 );
+	
+	return (tv.tv_sec & 0xff ) * 1e3 + tv.tv_usec * 1e-3;
+}
+//END debug 
+
 namespace KRufusDc
 {
 
-static const int USERLIST_POPULATE_DELAY = 3000; // delay between widget creation and user list population [ms]
+static const int USERLIST_POPULATE_DELAY = 1000; // delay between widget creation and user list population [ms]
 static const int USERLIST_UPDATE_INTERVAL = 5000; // how often user list should be updated [ms]
 
 
@@ -54,10 +68,6 @@ HubWidget::HubWidget( Hub* pHub, QWidget* parent, Qt::WindowFlags f )
 	
 	// give hub some time to get user data
 	QTimer::singleShot( USERLIST_POPULATE_DELAY, this, SLOT(populateUsers()) );
-	
-	// actions
-/*	_pActionFileList = new QAction( KIcon("view-list-tree"), i18n("Request file list"), this );
-	connect( _pActionFileList, SIGNAL(triggered()), SLOT(requestFileList()) );*/
 }
 
 // ============================================================================
@@ -88,7 +98,6 @@ void HubWidget::onHubMessage( int type, const QString& msg )
 void HubWidget::populateUsers()
 {
 	QList<UserInfo> users = _pHub->anchor()->getUsers();
-	qDebug("initializing user list with %d users", users.size() );
 	_userModel.populate( users );
 	
 	pUsers->setModel( & _userModel );
@@ -111,10 +120,25 @@ void HubWidget::updateUsers()
 	QSet< QString>            removed;
 	
 	_pHub->anchor()->getChangedUsers( added, modified, removed );
+	int initialUserCount = _userModel.rowCount();
+	//qDebug("Updatng users: added: %d, removed: %d, modified: %d. users on list: %d", added.size(), removed.size(), modified.size(), _userModel.rowCount() );
 	
-	qDebug("Updatng users: added: %d, removed: %d, modified: %d. users on list: %d", added.size(), removed.size(), modified.size(), _userModel.rowCount() );
-	
+	//double start = getms();
 	_userModel.update( added, modified, removed );
+	//double end = getms();
+	//qDebug("Updating users in %.2f ms", end-start );
+	
+	// if list was emty before ,reset view (why?)
+	if ( ! initialUserCount )
+	{
+		pUsers->reset();
+		// resize columns to content
+		for( int i = 0; i < _userModel.columnCount(); i++ )
+		{
+			pUsers->resizeColumnToContents( i );
+		}
+
+	}
 }
 
 // ============================================================================

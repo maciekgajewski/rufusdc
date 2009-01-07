@@ -37,6 +37,7 @@ using namespace asio;
 
 class Hub;
 class Operation;
+class FileList;
 
 /**
 * @brief Main DC client object
@@ -114,8 +115,13 @@ public:
 	
 	// signals
 	
+	/// New system message from hub. TODO unused ?
 	boost::signal< void ( Hub*, const string&) > signalSystemMessage;
+	/// New chat message from hub. TODO unused ?
 	boost::signal< void ( Hub*, const string&) > signalChatMessage;
+	
+	/// File list received
+	boost::signal< void (shared_ptr<FileList>) > signalIncomingFileList;
 	
 private:
 

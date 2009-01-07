@@ -45,9 +45,9 @@ public:
 	
 	/// Updates data dynamically
 	void update 
-		( QMap< QString, UserInfo >&   added
-		, QMap< QString, UserInfo >&   modified
-		, QSet< QString>&               removed
+		( const QMap< QString, UserInfo >&   added
+		, const QMap< QString, UserInfo >&   modified
+		, const QSet< QString>&              removed
 		);
 	
 	/// direct access to data
@@ -79,8 +79,16 @@ private:
 	
 	void rebuildIndex(); ///< Rebuild index
 	
-	/// Convers numerical size into human-readable string
-	static QString sizeToString( uint64_t size );
+	// sub-updates
+	
+	/// Adds users to list
+	void addUsers( const QMap< QString, UserInfo >& added );
+	
+	/// Modiefies users on the list
+	void modifyUsers( const QMap< QString, UserInfo >& modified );
+	
+	/// Removes users from list
+	void removeUsers( const QSet< QString>& removed );
 
 };
 

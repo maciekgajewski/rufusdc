@@ -16,10 +16,12 @@
 
 // WARNING: all this need to be _before_ any Qt includes
 
+// boost
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 
+// rufusdc
 #include "rufusdc/client.h"
 #include "rufusdc/hub.h"
 
@@ -43,12 +45,17 @@ ClientThread::ClientThread( QObject *parent )
 	_pClient = new RufusDc::Client();
 	_pTimer = NULL;
 	_stopped = false;
+	
+	_pClient->signalIncomingFileList.connect
+		( boost::bind( &ClientThread::onFileListReceived, this, _1 )
+		);
 }
 
 // ============================================================================
 // Destructor
 ClientThread::~ClientThread()
 {
+	delete _pClient;
 }
 
 
@@ -129,6 +136,28 @@ void ClientThread::slotDisconnectHub( const QString& addr )
 {
 	boost::shared_ptr<RufusDc::Hub> pHub = _pClient->getHub( qPrintable( addr ) );
 	pHub->disconnect();
+}
+
+// ============================================================================
+// xml file list received
+void ClientThread::onFileListReceived( const boost::shared_ptr<RufusDc::FileList>& pFileList )
+{
+	QMutexLocker lock( & _fileListMutex );
+	
+	_fileLists.push_back( pFileList );
+	Q_EMIT signalFileListReceived();
+}
+
+// ============================================================================
+// Take file lists
+void ClientThread::takeFileList( boost::shared_ptr<RufusDc::FileList>& pOut )
+{
+	QMutexLocker lock( & _fileListMutex );
+	
+	if ( ! _fileLists.isEmpty() )
+	{
+		pOut = _fileLists.takeFirst();
+	}
 }
 
 } // namespace

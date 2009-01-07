@@ -14,14 +14,22 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
+// bzlib
 #include <bzlib.h>
 
+// std
 #include <iostream>
+#include <stdexcept>
+
+// boost
+#include <boost/format.hpp>
 
 #include "filelist.h"
 
 namespace RufusDc
 {
+
+using namespace boost;
 
 // ============================================================================
 // Constructor
@@ -43,6 +51,7 @@ void FileList::fromBz2Data( vector<char>& data )
 	
 
 	unsigned int inSize = data.size() - shift;
+	char* inBuf = data.data() + shift;
 	
 	unsigned int outSize = inSize * 10; // rough estimate
 	
@@ -51,7 +60,7 @@ void FileList::fromBz2Data( vector<char>& data )
 	int res = BZ2_bzBuffToBuffDecompress
 		( outBuf
 		, &outSize
-		, data.data() + shift
+		, inBuf
 		, inSize
 		, 0 // no small, be fast!
 		, 1 // some verbosity (0-4)
@@ -61,13 +70,15 @@ void FileList::fromBz2Data( vector<char>& data )
 	{
 		cerr << "file list decompressed from " << inSize << " to " << outSize << " bytes" << endl;
 		_xml.assign( outBuf, outSize );
+		delete[] outBuf;
 	}
 	else
 	{
-		cerr << "error decompresing file list: " << res << endl;
+		delete[] outBuf;
+		
+		throw std::logic_error( str(format("Error decompresing filelist.xml.bz2. code: %1%") % res ).c_str() );
 	}
 	
-	delete[] outBuf;
 }
 
 

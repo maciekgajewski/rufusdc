@@ -38,14 +38,47 @@ public:
 	~FileList();
 	
 	/// Initilizes list form bz2-compressed data.
+	/// @param data raw filelist.xml.bz2 data, with mysterious 7-byte header
+	/// @exception std:logic_error on error
 	void fromBz2Data( vector<char>& data );
 
 	/// Returns XML data
-	const string& xml(); 
+	const string& xml() const { return _xml; }
+
+	void setHub( const string& value )
+	{
+		_hub = value;
+	}
+	
+
+	string hub() const
+	{
+		return _hub;
+	}
+
+	void setNick( const string& value )
+	{
+		_nick = value;
+	}
+	
+
+	string nick() const
+	{
+		return _nick;
+	}
+	
+	
 
 private:
 
+	/// XML data
 	string _xml;
+	
+	/// Hub
+	string _hub;
+	
+	/// User
+	string _nick;
 
 };
 

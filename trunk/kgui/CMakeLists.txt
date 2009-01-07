@@ -16,6 +16,8 @@ set(
 	usermodel.cpp
 	userinfo.cpp
 	clientthreadhub.cpp
+	filelistwidget.cpp
+	utils.cpp
 )
 
 kde4_add_ui_files(

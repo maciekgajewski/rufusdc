@@ -132,9 +132,6 @@ protected:
 	/// Buffer for outgoing message
 	asio::streambuf _outBuffer;
 	
-	/// Bytes requested for binary transfer
-	uint64_t _requestedBytes;
-	
 	/**
 	* @brief Called when message is received.
 	* Recognizes message, and calls onIcomingCommand or onIncomingChat. 
@@ -255,7 +252,7 @@ protected:
 	* @param size bytes received
 	* @return \b true when requested number of bytes is reached, or when erro occurs.
 	*/
-	bool recvEnoughData( const system::error_code& err, int size );
+	bool recvEnoughData( uint64_t requested, const system::error_code& err, int size );
 	
 	// command handlers
 	

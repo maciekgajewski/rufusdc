@@ -20,6 +20,11 @@
 
 #include "clientthread.h"
 
+namespace RufusDc
+{
+	class FileList;
+}
+
 namespace KRufusDc
 {
 
@@ -72,6 +77,11 @@ public Q_SLOTS:
 	void stop();
 	
 Q_SIGNALS:
+	
+	// public signals
+	
+	/// Emitted when new fiel lsit received
+	void signalFileListReceived( const boost::shared_ptr<RufusDc::FileList>& pFileList );
 
 	// cross-threads signals
 
@@ -79,6 +89,11 @@ Q_SIGNALS:
 	void signalDisconnectHub( const QString& addr );
 	void startThread();
 	void stopThread();
+
+private Q_SLOTS:
+
+	// cross-thread slots
+	void fileListReceived();
 
 private:
 

@@ -16,7 +16,7 @@
 
 #include <iostream>
 
-#include <boost/regex.hpp>
+#include <boost/tokenizer.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/format.hpp>
 #include <boost/foreach.hpp>
@@ -35,6 +35,9 @@ using namespace boost;
 // Constructor
 UserInfo::UserInfo()
 {
+	_status = 1;
+	_sharesize = 0;
+
 }
 
 // ============================================================================
@@ -49,14 +52,6 @@ void UserInfo::parseMyINFO( const list<string>& params )
 {
 	if ( params.size() >= 4 )
 	{
-		// debug
-		/*
-		cerr << "My info: "<< params.size() << " params" << endl;
-		BOOST_FOREACH( string p, params )
-		{
-			cerr << "  * " << p << endl;
-		}
-		*/
 		list<string>::const_iterator it = params.begin();
 		++it; // $ALL, not interesting (maybe check?)
 		string nick        = *(it++);
@@ -74,10 +69,9 @@ void UserInfo::parseMyINFO( const list<string>& params )
 		_nick = nick;
 		
 		// description 
-		smatch what;
-		if( regex_match( description, what, regex("(.*)\\$") ) )
+		if( description[ description.length()-1 ] == '$' ) // check last character
 		{
-			_description = what[1];
+			_description.assign( description.data(), description.length()-1 ); // copy all but last
 		}
 		else
 		{
@@ -85,19 +79,47 @@ void UserInfo::parseMyINFO( const list<string>& params )
 		}
 		
 		// others
-		if( regex_match( other, what, regex("\\$(.+)(.)\\$(.*)\\$(\\d+)\\$") ) )
+		try
 		{
-			_connection    = what[1];
-			_status        = string( what[2] )[0];
-			_email         = what[3];
+			typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
+			boost::char_separator<char> sep("$", "", boost::keep_empty_tokens);
+	
+			tokenizer tokens( other, sep );
+	
 			
-			
-			_sharesize = boost::lexical_cast<uint64_t>( what[4] );
-			
+			int index = 0;
+			for( tokenizer::iterator it = tokens.begin(); it !=  tokens.end(); ++it, ++index )
+			{
+				switch( index )
+				{
+					case 1:
+					{
+						string conn_stat = *it;
+						_status = conn_stat[ conn_stat.length() - 1 ]; // use last char
+						_connection.assign( conn_stat.data(), conn_stat.length()-1 ); // copy all but last
+						break;
+					}
+					
+					case 2:
+					{
+						_email = *it;
+						break;
+					}
+					
+					case 3:
+					{
+						_sharesize = boost::lexical_cast<uint64_t>( *it );
+						break;
+					}
+					
+					default:
+						;// nothing, ignore
+				}
+			}
 		}
-		else
+		catch(const std::exception& e)
 		{
-			throw ProtocolException(str(format("Cant parse user's parameters: %1%")%other));
+			throw ProtocolException(str(format("Cant parse user's parameters %1%: %2%")%other%e.what()));
 		}
 	}
 	else

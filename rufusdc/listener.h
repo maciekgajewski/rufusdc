@@ -21,8 +21,7 @@
 #include <boost/shared_ptr.hpp>
 
 // local
-#include "activedownload.h"
-#include "downloadrequest.h"
+#include "directconnection.h"
 
 namespace RufusDc
 {
@@ -32,6 +31,7 @@ using namespace boost::asio;
 using namespace boost::asio::ip;
 
 class Client;
+class ConnectionRequest;
 
 /**
 * @brief Listnes for connections from other clients.
@@ -71,7 +71,7 @@ public:
 	 * @brief Adds download request to the queue
 	 * @param pRequest request object
 	 */
-	void addRequest( const shared_ptr<DownloadRequest>& pRequest );
+	void addRequest( const shared_ptr<ConnectionRequest>& pRequest );
 	
 private:
 
@@ -80,16 +80,23 @@ private:
 	/// Parent object
 	Client* _pParent;
 	
-	/// Active downloading connections
-	list< shared_ptr<ActiveDownload> > _downloads;
+	/// Small structure holding pointer to connection and signals-slot connection to it
+	struct ConnDesc
+	{
+		shared_ptr<DirectConnection> connection;
+		boost::signals::connection   signalConnection;
+	};
+	
+	/// Conenctions waiting for dispatching
+	list< ConnDesc > _connections;
 	
 	/// Queue of requests
-	list< shared_ptr<DownloadRequest> > _requests;
+	list< shared_ptr<ConnectionRequest> > _requests;
 	
 	tcp::acceptor _acceptor; ///< Accepts incoming connection
 	
-	/// Socket for incoming connection
-	//shared_ptr<tcp::socket> _pSocket; // TODO wrong!
+	/// Timout timer
+	boost::asio::deadline_timer _timer;
 	
 	/// Accept handler
 	void onAccept( shared_ptr<tcp::socket> pSocket, system::error_code err );
@@ -97,19 +104,20 @@ private:
 	/// Request accept
 	void accept();
 	
-	/// Removed completed downloads from list
-	void removeCompletedDownloads();
+	/// Removed completed connections from list
+	void removeCompletedConnections();
 	
 	/// Removes timeouted requests from queue
 	void removeExpiredRequests();
 	
-	/**
-	 * @brief Slot used to provide request.
-	 * @param nick nick for which request is to be provided
-	 * @param out buffor for request pointer.
-	 */
-	void takeRequest( const string& nick, shared_ptr<DownloadRequest>& out );
-
+	/// Slot: handles connection state change. Calls connectionStateChanged
+	void slotConnectionStateChanged( DirectConnection* pConnection, int state );
+	
+	/// Called when connection state changed
+	void connectionStateChanged( shared_ptr<DirectConnection> pConnection, int state );
+	
+	/// Timer used to periodically remove timeout requests
+	void onTimer();
 };
 
 }

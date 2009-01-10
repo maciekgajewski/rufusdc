@@ -20,35 +20,40 @@
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 #include <boost/signals.hpp>
 
+#include "client.h"
+
 namespace RufusDc
 {
 	using namespace std;
 	using namespace boost;
+	
+	class DirectConnection;
 
 /**
 * @brief Expected incoming connection.
 * Simple structure describing expected incoming connection and download request.
 * @author Maciek Gajewski <maciej.gajewski0@gmail.com>
 */
-class DownloadRequest
+class ConnectionRequest
 {
 public:
-	DownloadRequest();
-	~DownloadRequest();
+	ConnectionRequest();
+	~ConnectionRequest();
 
+	
 	// signals
 	
-	/// Emitted on transfer completion.
-	///@param data received data
-	///@param pRequest pointer to the request. Do not store!
-	///@todo remove. use partial tyrtansver by signalDataIncoming
-	boost::signal< void ( vector<char>& data, DownloadRequest* pRequest ) > signalTransferCompleted;
-	
-	/// Called whenver ther is any incoming data
-	boost::signal< void( vector<char>& data, uint64_t offset ) > signalDataIncoming;
-
-	// Checks if expiry time passed
+	/// Checks if expiry time passed
+	///@returns \b true is the request os outdated
 	bool isExpired();
+	
+	/// Called when request ss fullfilled
+	void connected( shared_ptr<DirectConnection> pConnection );
+		
+	/// Caled when request failed.
+	void failed( const Error& error );
+		
+	// getters / setters
 	
 	void setNick( const string& value )
 	{
@@ -58,16 +63,6 @@ public:
 	string nick() const
 	{
 		return _nick;
-	}
-
-	void setFile( const string& value )
-	{
-		_file = value;
-	}
-
-	string file() const
-	{
-		return _file;
 	}
 
 	void setExpiryTime( const posix_time::ptime& value )
@@ -90,38 +85,26 @@ public:
 		return _hub;
 	}
 
-	void setOffset( const uint64_t& value )
+	void setConnectedHandler( const Client::ConnectionHandler& value )
 	{
-		_offset = value;
+		_connectedHandler = value;
 	}
 	
 
-	uint64_t offset() const
+	Client::ConnectionHandler connectedHandler() const
 	{
-		return _offset;
+		return _connectedHandler;
 	}
-
-	void setCount( const uint64_t& value )
-	{
-		_count = value;
-	}
-	
-
-	uint64_t count() const
-	{
-		return _count;
-	}
-	
 	
 	
 private:
 	string _nick;   ///< nick of user that should connect here
-	string _file;   ///< path to file which should be downloaded
 	string _hub;    ///< Hub to download from
 	
-	uint64_t _offset; ///< From where to start receiving
-	uint64_t _count;  ///< Number of bytes to receive. 0 for all
+	/// Handler called when connection is completed, or there is error during connection
+	Client::ConnectionHandler _connectedHandler;
 	
+
 	
 	/// Time when the connection expires
 	posix_time::ptime _expiryTime;

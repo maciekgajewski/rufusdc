@@ -13,29 +13,47 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-#include "downloadrequest.h"
+#include "connectionrequest.h"
 
 namespace RufusDc
 {
 
-DownloadRequest::DownloadRequest()
-	: _offset(0)
-	, _count(0)
-{
-}
-
-
-DownloadRequest::~DownloadRequest()
+// ============================================================================
+// Constructor
+ConnectionRequest::ConnectionRequest()
 {
 }
 
 // ============================================================================
+// Destructor
+ConnectionRequest::~ConnectionRequest()
+{
+	cerr << "Connection request to "<<_nick<<"@"<<_hub<<" destroyed" << endl;
+}
+
+// ============================================================================
 // Is expired
-bool DownloadRequest::isExpired()
+bool ConnectionRequest::isExpired()
 {
 	posix_time::ptime now( posix_time::second_clock::local_time());
 	
 	return now > _expiryTime;
+}
+
+// ============================================================================
+// Connected
+void ConnectionRequest::connected( shared_ptr<DirectConnection> pConnection )
+{
+	_connectedHandler( Error(), pConnection );
+}
+
+// ============================================================================
+// Failed
+void ConnectionRequest::failed( const Error& error )
+{
+	assert( error );
+	
+	_connectedHandler( error, shared_ptr<DirectConnection>() );
 }
 
 }

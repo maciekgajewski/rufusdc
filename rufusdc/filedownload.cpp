@@ -23,7 +23,7 @@
 
 // local
 #include "client.h"
-#include "downloadrequest.h"
+#include "connectionrequest.h"
 #include "hub.h"
 
 #include "filedownload.h"
@@ -54,49 +54,6 @@ void FileDownload::start()
 	}
 	createTemporaryFile();
 	
-	// TODO serch for other sources here
-	
-	// get and connect to hub
-	_pHub = _pParent->getHub( _hub );
-	
-	_pHub->signalStateChanged.connect( boost::bind( &FileDownload::hubStateChanged, this, _1 ) );
-	
-	if ( _pHub->state() == Hub::Connected )
-	{
-		requestTransfer();
-	}
-}
-
-// ============================================================================
-// Requesttransfer
-void FileDownload::requestTransfer()
-{
-	const uint64_t chunk_size = 1 * 1024 * 1024; // 1 MB. absolutely experimantal value
-	
-	// request the transfer immediately!
-	uint64_t bytesRequested = min( _size - _receivedBytes, chunk_size );
-	
-	
-	shared_ptr<DownloadRequest> pRequest( new DownloadRequest );
-	pRequest->setNick( _nick );
-	pRequest->setFile( _path ); // TODO inconsistent naming!
-	
-	pRequest->setOffset( _receivedBytes );
-	pRequest->setCount( bytesRequested );
-	
-	// set up timeout (10 s )
-	pRequest->setExpiryTime( posix_time::second_clock::local_time() + posix_time::seconds(10) );
-	
-	// connect
-	pRequest->signalDataIncoming.connect( boost::bind( &FileDownload::dataIncoming, this, _1, _2 ) );
-	
-	_pParent->requestTransfer( _pHub.get(), pRequest );
-}
-
-// ============================================================================
-// Hub's state changed
-void FileDownload::hubStateChanged( int state )
-{
 	// TODO
 }
 
@@ -116,13 +73,6 @@ void FileDownload::createTemporaryFile()
 	// open the file
 	_tmpFile.open( _tmpFileName.c_str(), ios_base::out | ios_base::binary | ios_base::trunc );
 	
-}
-
-// ============================================================================
-// data incoming
-void FileDownload::dataIncoming( vector<char>& data, uint64_t offset )
-{
-	// TODO write to file
 }
 
 }

@@ -27,12 +27,15 @@
 #include "hub.h"
 #include "filelist.h"
 #include "filedownload.h"
+#include "filelistdownload.h"
+#include "connectionrequest.h"
 
 #include "client.h"
 
 namespace RufusDc
 {
 
+static const int CONNECTION_REQUEST_TIMEOUT = 10; // conenction request timeot [s]
 // ============================================================================
 // Constructor
 Client::Client()
@@ -94,7 +97,12 @@ Client::Settings::Settings()
 	tcpPort      = 3196;
 	udpPort      = 11455;
 	connection   = "0.5"; // whatever this means
-	downloadDirectory = getenv("$HOME"); // TODO non portable
+	
+	const char* _home = getenv("HOME"); // TODO non portable
+	if ( _home )
+	{
+		downloadDirectory = _home;
+	}
 }
 
 // ============================================================================
@@ -109,66 +117,15 @@ void Client::run()
 }
 
 // ============================================================================
-// request trransfer
-void Client::requestTransfer( Hub* pHub, const shared_ptr<DownloadRequest>& pRequest )
-{
-	// here decide if we are doing passive or active transfer
-	// send ConnectToMe
-	string addr = str(format( "%1%:%2%") % pHub->localIp() % _tcpListener.port() );
-	
-	pHub->sendCommand( "$ConnectToMe", assign::list_of( pRequest->nick() )( addr ) );
-	
-	// put request into queue
-	_tcpListener.addRequest( pRequest );
-}
-
-// ============================================================================
-// Called when file list is received
-void Client::fileListReceived( vector<char>& data, DownloadRequest* pRequest )
-{
-	cerr << "File list received from user " << pRequest->nick() << endl;
-	
-	shared_ptr<FileList> pList = shared_ptr<FileList>( new FileList() );
-	
-	try
-	{
-		pList->fromBz2Data( data );
-		pList->setNick( pRequest->nick() );
-		pList->setHub( pRequest->hub() );
-		
-		signalIncomingFileList( pList );
-	}
-	catch( const std::exception& e )
-	{
-		cerr << "Error decodng file list: " << e.what() << endl;
-	}
-	
-}
-
-// ============================================================================
 // Download file list
 void Client::downloadFileList( const string& hub, const string& nick )
 {
-	// TODO convert address to canonical form
+	shared_ptr<FileListDownload> pDownload( new FileListDownload( this ) );
 	
-	HubMap::iterator hit =  _hubs.find( hub ) ;
+	pDownload->setSource( hub, nick );
+	pDownload->start();
 	
-	if ( hit == _hubs.end() )
-	{
-		throw std::logic_error("Can't donwload list from hub that is not connected");
-	}
-	
-	// TODO actually use download manager here
-	
-	shared_ptr<DownloadRequest> pRequest = shared_ptr<DownloadRequest>( new DownloadRequest );
-	
-	pRequest->setNick( nick );
-	pRequest->setFile( "files.xml.bz2" );
-	// set up timeout (10 s )
-	pRequest->setExpiryTime( posix_time::second_clock::local_time() + posix_time::seconds(10) );
-	pRequest->signalTransferCompleted.connect( boost::bind( &Client::fileListReceived, this, _1, _2 ) );
-	
-	requestTransfer( hit->second.get(), pRequest );
+	_downloads.push_back( shared_ptr<Download>( pDownload ) );
 }
 
 // ============================================================================
@@ -192,6 +149,51 @@ void Client::downloadFile
 	pDownload->start();
 	
 	_downloads.push_back( shared_ptr<Download>( pDownload ) );
+}
+
+// ============================================================================
+// Request connection
+void Client::requestConnection
+	( const string& hub
+	, const string& nick
+	, const ConnectionHandler& handler
+	)
+{
+	cerr << "Requesting conection to user "<<nick<<"@"<<hub<<endl;
+	HubMap::iterator hit =  _hubs.find( hub ) ;
+	
+	if ( hit == _hubs.end() )
+	{
+		throw std::logic_error("Hub is not connected");
+	}
+	
+	Hub* pHub = hit->second.get();
+	
+	if ( ! pHub->hasUser( nick ) )
+	{
+		throw std::logic_error("User not connected");
+	}
+	
+	// sent request
+	string addr = str(format( "%1%:%2%") % pHub->localIp() % _tcpListener.port() );
+	pHub->sendCommand( "$ConnectToMe", assign::list_of( nick )( addr ) );
+	
+	// ok, file the request form
+	shared_ptr<ConnectionRequest> pRequest( new ConnectionRequest );
+	pRequest->setNick( nick );
+	pRequest->setHub( hub );
+	pRequest->setConnectedHandler( handler );
+	pRequest->setExpiryTime( posix_time::second_clock::local_time() + posix_time::seconds(CONNECTION_REQUEST_TIMEOUT) );
+	
+	_tcpListener.addRequest( pRequest );
+}
+
+// ============================================================================
+// File list received
+void Client::fileListReceived( const shared_ptr<FileList>& pList )
+{
+	// just emit signal
+	signalIncomingFileList( pList );
 }
 
 } // mamespace

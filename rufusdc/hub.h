@@ -88,13 +88,19 @@ public:
 	* @brief Returns list of currently connected users
 	* @return List of users
 	*/
-	list<UserInfo> getUsers();
+	list<UserInfo> getUsers() const;
 	
 	/**
 	* @brief Requests file list for specified user.
 	* @param nick user's nick
 	*/
 	void requestFileList( const string& nick );
+	
+	/**
+	* @brief Checks if user is currently connected to a hub
+	* @return \b true if connected
+	*/
+	bool hasUser( const string& nick ) const;
 
 private:
 	
@@ -132,7 +138,7 @@ private:
 	UserMap _users;
 	
 	/// Mutex guarding _users
-	boost::mutex _usersMutex;
+	mutable boost::mutex _usersMutex;
 	
 	// async handles
 	

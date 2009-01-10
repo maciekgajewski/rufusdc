@@ -19,38 +19,41 @@
 #include <boost/bind.hpp>
 #include <boost/assign.hpp>
 #include <boost/format.hpp>
+#include <boost/foreach.hpp>
 
 // local
 #include "protocolexception.h"
 #include "client.h"
 
-#include "activedownload.h"
+#include "directconnection.h"
 
 namespace RufusDc
 {
 
 // ============================================================================
 // Constructor
-ActiveDownload::ActiveDownload( Client* pClient, shared_ptr<tcp::socket> pSocket )
+DirectConnection::DirectConnection( Client* pClient, shared_ptr<tcp::socket> pSocket )
 		: Connection( pClient, "noaddress" )
 {
 	_pSocket = pSocket;
-	_state = Connected;
+	_state = Connecting;
 	_fileLength = 0;
+	_direction = UnknownDirection;
 	
 	// populate handlers
-	_handlers["$MyNick"]     = boost::bind( &ActiveDownload::commandMyNick, this, _1 );
-	_handlers["$Lock"]       = boost::bind( &ActiveDownload::commandLock, this, _1 );
-	_handlers["$Direction"]  = boost::bind( &ActiveDownload::commandDirection, this, _1 );
-	_handlers["$Key"]        = boost::bind( &ActiveDownload::commandKey, this, _1 );
-	_handlers["$FileLength"] = boost::bind( &ActiveDownload::commandFileLength, this, _1 );
-	_handlers["$ADCSND"]     = boost::bind( &ActiveDownload::commandADCSND, this, _1 );
+	_handlers["$MyNick"]     = boost::bind( &DirectConnection::commandMyNick, this, _1 );
+	_handlers["$Lock"]       = boost::bind( &DirectConnection::commandLock, this, _1 );
+	_handlers["$Direction"]  = boost::bind( &DirectConnection::commandDirection, this, _1 );
+	_handlers["$Key"]        = boost::bind( &DirectConnection::commandKey, this, _1 );
+	_handlers["$FileLength"] = boost::bind( &DirectConnection::commandFileLength, this, _1 );
+	_handlers["$ADCSND"]     = boost::bind( &DirectConnection::commandADCSND, this, _1 );
+	_handlers["$Supports"]   = boost::bind( &DirectConnection::commandSupports, this, _1 );
 	
 }
 
 // ============================================================================
 // start
-void ActiveDownload::start()
+void DirectConnection::start()
 {
 	// wait for MyNick
 	recvCommand();
@@ -58,39 +61,27 @@ void ActiveDownload::start()
 
 // ============================================================================
 // Destructor
-ActiveDownload::~ActiveDownload()
+DirectConnection::~DirectConnection()
 {
 }
 
 // ============================================================================
 // On chat
-void ActiveDownload::onIncomingChat( const string& msg )
+void DirectConnection::onIncomingChat( const string& msg )
 {
 	// TODO what should i do? probably disconnect?
 }
 
 // ============================================================================
 // My nick
-void ActiveDownload::commandMyNick( const list<string>& params )
+void DirectConnection::commandMyNick( const list<string>& params )
 {
 	if ( params.size() >= 1 )
 	{
 		string nick = params.front();
 		
-		cerr << "ActiveDownload: nick received: " << nick << endl;
-		
-		signalRequest( nick, _pRequest );
-		
-		if ( _pRequest )
-		{
-			// TODO do something
-			// TODO or nothing?
-			cerr << "ActiveDownload: request recived, file requested: " << _pRequest->file() << endl;
-		}
-		else
-		{
-			disconnect();
-		}
+		cerr << "DirectConnection: nick received: " << nick << endl;
+		_nick = nick;
 	}
 	else
 	{
@@ -100,19 +91,19 @@ void ActiveDownload::commandMyNick( const list<string>& params )
 
 // ============================================================================
 // Command lock
-void ActiveDownload::commandLock(  const list<string>& params )
+void DirectConnection::commandLock(  const list<string>& params )
 {
 	if ( params.size() >= 1 )
 	{
 		string lock = params.front();
 		
-		cerr << "ActiveDownload: lock received: " << lock << endl;
+		cerr << "DirectConnection: lock received: " << lock << endl;
 		
 		string key = calculateKey( lock );
 		string mylock = "EXTENDEDPROTOCOLWELCOMETOJAMAICAHOLIDAY";
 		sendCommand( "$MyNick", assign::list_of( _pParent->settings().nick ) );
 		sendCommand( "$Lock", assign::list_of( mylock )( string("Pk=rufusdc-0.1") ) );
-		sendCommand( "$Direction", assign::list_of("Download")("42") );
+		sendCommand( "$Direction", assign::list_of("Download")("42") ); // TODO and what if we want to upload?
 		sendCommand( "$Key", assign::list_of(key) );
 	}
 	else
@@ -123,19 +114,16 @@ void ActiveDownload::commandLock(  const list<string>& params )
 
 // ============================================================================
 // Directions
-void ActiveDownload::commandDirection(  const list<string>& params )
+void DirectConnection::commandDirection(  const list<string>& params )
 {
 	if ( params.size() >= 1 )
 	{
 		string direction = params.front();
 		
 		// what now? drop if "Download"
-		cerr << "ActiveDownload: direction get: " << direction << endl;
+		cerr << "DirectConnection: direction get: " << direction << endl;
 		
-		if ( direction != "Upload" )
-		{
-			throw ProtocolException("Peer client misbehaved and requested download\n");
-		}
+		_direction = direction == "Download" ? Download : Upload;
 	}
 	else
 	{
@@ -145,28 +133,14 @@ void ActiveDownload::commandDirection(  const list<string>& params )
 
 // ============================================================================
 // key
-void ActiveDownload::commandKey(  const list<string>& params )
+void DirectConnection::commandKey(  const list<string>& params )
 {
 	if ( params.size() >= 1 )
 	{
 		string key = params.front();
 		// i'm trusting you endlessly, my friend
-		cerr << "ActiveDownload: got key\n";
-		if ( _pRequest )
-		{
-			string start = lexical_cast<string>( _pRequest->offset() );
-			string count = _pRequest->count() > 0 ? lexical_cast<string>( _pRequest->count() ) : "-1";
-			
-			string fileRequests = str(format("file %1% %2% %3% ZL1") % _pRequest->file() % start % count );
-		
-			cerr << "ActiveDownload: sending $ADCGET " << fileRequests << endl;
-			sendCommand( "$ADCGET", assign::list_of( fileRequests ) );
-		}
-		else
-		{
-			cerr << "ActiveDownload: $Key send, while no request\n";
-			disconnect();
-		}
+		cerr << "DirectConnection: got key\n";
+		setState( Connected );
 	}
 	else
 	{
@@ -176,7 +150,7 @@ void ActiveDownload::commandKey(  const list<string>& params )
 
 // ============================================================================
 // File length
-void ActiveDownload::commandFileLength(  const list<string>& params )
+void DirectConnection::commandFileLength(  const list<string>& params )
 {
 	if ( params.size() >= 1 )
 	{
@@ -194,7 +168,7 @@ void ActiveDownload::commandFileLength(  const list<string>& params )
 
 // ============================================================================
 // ADCSND
-void ActiveDownload::commandADCSND( const list<string>& params )
+void DirectConnection::commandADCSND( const list<string>& params )
 {
 	if ( params.size() >= 4 )
 	{
@@ -217,16 +191,19 @@ void ActiveDownload::commandADCSND( const list<string>& params )
 		if ( _inBuffer.size() > 0 )
 		{
 			_receivedBytes += _inBuffer.size();
+			_currentFileOffset += _inBuffer.size();
 			
 			vector<char> data( _inBuffer.size() );
 			_inBuffer.sgetn( data.data(), _inBuffer.size() );
 			_inBuffer.consume( _inBuffer.size() );
 			
-			_pRequest->signalDataIncoming( data, _pRequest->offset() );
+			//_pRequest->signalDataIncoming( data, _pRequest->offset() );
+			_onIncomingData( data, _currentFileOffset );
+			
 		}
 		
 		
-		recvData( _fileLength );
+		recvData( _fileLength - _receivedBytes + 7 ); // TODO magick header 7 bytes here
 		
 	}
 	else
@@ -237,23 +214,79 @@ void ActiveDownload::commandADCSND( const list<string>& params )
 
 // ============================================================================
 // On incoming data
-void ActiveDownload::onIncomingData( vector<char>& buffer )
+void DirectConnection::onIncomingData( vector<char>& buffer )
 {
-	// announce completion and say goodbye
-	_pRequest->signalDataIncoming( buffer, _pRequest->offset() + _receivedBytes );
+	// TODO handler should be checked here
 	_receivedBytes += buffer.size();
+	_onIncomingData( buffer, _currentFileOffset );
+	_currentFileOffset += buffer.size();
 	
-	// TODO for backward compatibility
-	_pRequest->signalTransferCompleted( buffer, _pRequest.get() );
-	
-	// check if all bytes are received
-	if ( _receivedBytes >= _pRequest->count() )
+	_onDownloadCompleted(Error());
+	_onDownloadCompleted.clear();
+}
+
+// ============================================================================
+// Supports
+void DirectConnection::commandSupports( const list<string>& params )
+{
+	BOOST_FOREACH( string param, params )
 	{
-		// TODO announce completion here?
+		_features.insert( param );
+		cerr << "Client's feature: " << param << endl;
+	}
+}
+
+// ============================================================================
+// has featire?
+bool DirectConnection::hasFeature( const string& feat ) const
+{
+	return _features.find(feat) != _features.end();
+}
+
+// ============================================================================
+// Download file
+void DirectConnection::downloadFile
+	( const string& fileName
+	, uint64_t offset
+	, uint64_t count
+	, const IncomingDataHandler& dataHandler
+	, const CompletionHandler& completionHandler
+	)
+{
+	_currentFileOffset = offset;
+	_bytesRequested = count;
+	_onIncomingData = dataHandler;
+	_onDownloadCompleted = completionHandler;
+	
+	if ( _state == Connected && _direction == Upload && hasFeature("ADCGet" ) )
+	{
+		string strStart = lexical_cast<string>( offset );
+		string strCount = count > 0 ? lexical_cast<string>( count ) : "-1";
+		
+		string fileRequests = str(format("file %1% %2% %3% ZL1") % fileName % strStart % strCount );
+		
+		cerr << "DirectConnection: sending $ADCGET " << fileRequests << endl;
+		// TODO will other client live w/o this?
+		sendCommand( "$ADCGET", assign::list_of( fileRequests ) );
+	}
+	else
+	{
 		disconnect();
+		throw std::logic_error("Not connected, peer doesn't know ADCGET or doesn't want to send anythig to us");
+	}
+}
+
+// ============================================================================
+// disconnect
+void DirectConnection::disconnect()
+{
+	// if anyone interested - let know that connection is lost
+	if ( ! _onDownloadCompleted.empty() )
+	{
+		_onDownloadCompleted( Error("Connection lost") );
 	}
 	
-	// else - wait for another download request
+	Connection::disconnect();
 }
 
 }

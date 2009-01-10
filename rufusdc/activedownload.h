@@ -81,7 +81,7 @@ private:
 	
 	string   _lock;         ///< Lock received from peer
 	uint64_t _fileLength;   ///< Downloaded file length
-	uint64_t _recivedBytes; ///< Bytes recived so far
+	uint64_t _receivedBytes; ///< Bytes received so far
 	
 	/// Request
 	shared_ptr<DownloadRequest> _pRequest;

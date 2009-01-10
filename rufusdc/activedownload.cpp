@@ -154,7 +154,10 @@ void ActiveDownload::commandKey(  const list<string>& params )
 		cerr << "ActiveDownload: got key\n";
 		if ( _pRequest )
 		{
-			string fileRequests = str(format("file %1% 0 -1 ZL1") % _pRequest->file() );
+			string start = lexical_cast<string>( _pRequest->offset() );
+			string count = _pRequest->count() > 0 ? lexical_cast<string>( _pRequest->count() ) : "-1";
+			
+			string fileRequests = str(format("file %1% %2% %3% ZL1") % _pRequest->file() % start % count );
 		
 			cerr << "ActiveDownload: sending $ADCGET " << fileRequests << endl;
 			sendCommand( "$ADCGET", assign::list_of( fileRequests ) );
@@ -207,8 +210,21 @@ void ActiveDownload::commandADCSND( const list<string>& params )
 		uint64_t start = lexical_cast<int64_t>( startstr );
 		uint64_t end = lexical_cast<int64_t>( endstr );
 		
-		_recivedBytes = 0;
+		_receivedBytes = 0;
 		_fileLength = end - start;
+		
+		// use all data from buffer
+		if ( _inBuffer.size() > 0 )
+		{
+			_receivedBytes += _inBuffer.size();
+			
+			vector<char> data( _inBuffer.size() );
+			_inBuffer.sgetn( data.data(), _inBuffer.size() );
+			_inBuffer.consume( _inBuffer.size() );
+			
+			_pRequest->signalDataIncoming( data, _pRequest->offset() );
+		}
+		
 		
 		recvData( _fileLength );
 		
@@ -224,9 +240,20 @@ void ActiveDownload::commandADCSND( const list<string>& params )
 void ActiveDownload::onIncomingData( vector<char>& buffer )
 {
 	// announce completion and say goodbye
+	_pRequest->signalDataIncoming( buffer, _pRequest->offset() + _receivedBytes );
+	_receivedBytes += buffer.size();
+	
+	// TODO for backward compatibility
 	_pRequest->signalTransferCompleted( buffer, _pRequest.get() );
 	
-	disconnect();
+	// check if all bytes are received
+	if ( _receivedBytes >= _pRequest->count() )
+	{
+		// TODO announce completion here?
+		disconnect();
+	}
+	
+	// else - wait for another download request
 }
 
 }

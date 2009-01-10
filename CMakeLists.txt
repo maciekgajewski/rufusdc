@@ -5,5 +5,6 @@ set( CMAKE_BUILD_TYPE Debug )
 
 add_subdirectory( rufusdc )
 add_subdirectory( kgui )
-add_subdirectory( testapp )
+# too obsolete
+#add_subdirectory( testapp )
 

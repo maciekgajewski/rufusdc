@@ -38,6 +38,7 @@ using namespace asio;
 class Hub;
 class Operation;
 class FileList;
+class Download;
 
 /**
 * @brief Main DC client object
@@ -64,54 +65,76 @@ public:
 		int     uploadSlots;  ///< Upload slots
 		int     tcpPort;      ///< TCP port for active connection. Negative for none
 		int     udpPort;      ///< UDP port for active connection. Negative for none
+		
+		string  downloadDirectory; ///< Directory where downloade files are stored
 	};
 
 	Client();
 	~Client();
 	
 	/**
-		* @brief Updates status.
-		* Call this method periodically to get client going.
-		*/
+	* @brief Updates status.
+	* Call this method periodically to get client going.
+	*/
 	void run();
 	
 	/**
-		* @brief Connects to HUB
-		* @param hubAddr hub address
-		*/
-	void connectToHub( const string& hubAddr );
-	
-	/**
-		* @brief Returns hub with specified address
-		* @param hubAddr hub address
-		* @return Pointer to hub object
-		*/
+	* @brief Returns hub with specified address
+	* @param hubAddr hub address
+	* @return Pointer to hub object
+	*/
 	shared_ptr<Hub> getHub( const string& addr );
 	
 	/**
-		* @brief Sets client settings.
-		* @param settings new settings
-		*/
+	* @brief Sets client settings.
+	* @param settings new settings
+	*/
 	void setSettings( const Settings& settings ) { _settings = settings; }
 	
 	/**
-		* @brief Returns settings
-		* @return settings
-		*/
+	* @brief Returns settings
+	* @return settings
+	*/
 	const Settings& settings() const { return _settings; }
 	
 	/**
-		* @brief Returns client's IO service
-		* @return reference to io service
-		*/
+	* @brief Returns client's IO service
+	* @return reference to io service
+	*/
 	io_service& ioService() { return _service; }
 	
 	/**
 	 * @brief Requests transfer
+	 * This is low-level function used to by higher-level dowload managers to request actual conection.
 	 * @param hub     hub to which source is conected
 	 * @param request request description
 	 */
 	void requestTransfer( Hub* pHub, const shared_ptr<DownloadRequest>& pRequest );
+	
+	/**
+	 * @brief Starts file download
+	 * Creates file download manager and places it in download list.
+	 * @param hub  hub to which owner of file is connected
+	 * @param nick user's nick
+	 * @param path file path
+	 * @param tth  file hash
+	 * @param size expected file size
+	 */
+	void downloadFile
+		( const string& hub
+		, const string& nick
+		, const string& path
+		, const string& tth
+		, uint64_t size
+		);
+	
+	/**
+	 * @brief Starts file list download
+	 * Creates file list download manager and places it in download list.
+	 * @param hub  hub to which user is connected
+	 * @param nick user's nick
+	 */
+	void downloadFileList( const string& hub, const string& nick );
 	
 	// signals
 	
@@ -145,6 +168,12 @@ private:
 	
 	/// TCP Listener
 	Listener _tcpListener;
+	
+	/// Downloads list
+	list< shared_ptr<Download> > _downloads;
+	
+	/// Mutex guarding downloads
+	boost::mutex _downloadsMutex;
 	
 	/// Receives all hubs chat messages
 	void onHubChatMessage( Hub* pHub, const string& msg );

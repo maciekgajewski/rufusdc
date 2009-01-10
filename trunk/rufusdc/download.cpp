@@ -13,29 +13,23 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-#include "downloadrequest.h"
+#include "download.h"
 
 namespace RufusDc
 {
 
-DownloadRequest::DownloadRequest()
-	: _offset(0)
-	, _count(0)
-{
-}
-
-
-DownloadRequest::~DownloadRequest()
+// ============================================================================
+// Consrtructor
+Download::Download( Client* pParent )
+	: _pParent( pParent )
 {
 }
 
 // ============================================================================
-// Is expired
-bool DownloadRequest::isExpired()
+// Destructor
+Download::~Download()
 {
-	posix_time::ptime now( posix_time::second_clock::local_time());
-	
-	return now > _expiryTime;
 }
+
 
 }

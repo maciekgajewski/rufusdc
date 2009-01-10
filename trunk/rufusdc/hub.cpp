@@ -286,12 +286,7 @@ void Hub::commandHubTopic( const list<string>& params )
 // Request file list
 void Hub::requestFileList( const string& nick )
 {
-	shared_ptr<DownloadRequest> pRequest = shared_ptr<DownloadRequest>( new DownloadRequest );
-	
-	pRequest->setNick( nick );
-	pRequest->setFile( "files.xml.bz2" );
-	
-	_pParent->requestTransfer( this, pRequest );
+	_pParent->downloadFileList( _address, nick );
 }
 
 // ============================================================================

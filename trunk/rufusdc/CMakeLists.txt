@@ -16,6 +16,8 @@ set(
 	activedownload.cpp
 	downloadrequest.cpp
 	filelist.cpp
+	download.cpp
+	filedownload.cpp
 )
 
 

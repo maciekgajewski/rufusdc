@@ -38,8 +38,14 @@ public:
 
 	// signals
 	
-	/// Emitted on transfer completion. Do not store pRequest.
+	/// Emitted on transfer completion.
+	///@param data received data
+	///@param pRequest pointer to the request. Do not store!
+	///@todo remove. use partial tyrtansver by signalDataIncoming
 	boost::signal< void ( vector<char>& data, DownloadRequest* pRequest ) > signalTransferCompleted;
+	
+	/// Called whenver ther is any incoming data
+	boost::signal< void( vector<char>& data, uint64_t offset ) > signalDataIncoming;
 
 	// Checks if expiry time passed
 	bool isExpired();
@@ -58,7 +64,6 @@ public:
 	{
 		_file = value;
 	}
-	
 
 	string file() const
 	{
@@ -70,7 +75,6 @@ public:
 		_expiryTime = value;
 	}
 	
-
 	posix_time::ptime expiryTime() const
 	{
 		return _expiryTime;
@@ -80,18 +84,44 @@ public:
 	{
 		_hub = value;
 	}
-	
 
 	string hub() const
 	{
 		return _hub;
 	}
+
+	void setOffset( const uint64_t& value )
+	{
+		_offset = value;
+	}
+	
+
+	uint64_t offset() const
+	{
+		return _offset;
+	}
+
+	void setCount( const uint64_t& value )
+	{
+		_count = value;
+	}
+	
+
+	uint64_t count() const
+	{
+		return _count;
+	}
+	
 	
 	
 private:
 	string _nick;   ///< nick of user that should connect here
 	string _file;   ///< path to file which should be downloaded
 	string _hub;    ///< Hub to download from
+	
+	uint64_t _offset; ///< From where to start receiving
+	uint64_t _count;  ///< Number of bytes to receive. 0 for all
+	
 	
 	/// Time when the connection expires
 	posix_time::ptime _expiryTime;

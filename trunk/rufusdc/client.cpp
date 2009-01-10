@@ -14,14 +14,19 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
+// libc
+#include <stdlib.h>
+
 // boost
 #include <boost/bind.hpp>
 #include <boost/assign.hpp>
 #include <boost/format.hpp>
+#include <boost/shared_ptr.hpp>
 
 // local
 #include "hub.h"
 #include "filelist.h"
+#include "filedownload.h"
 
 #include "client.h"
 
@@ -39,17 +44,6 @@ Client::Client()
 // Destructor
 Client::~Client()
 {
-}
-
-// ============================================================================
-// Connect to hub
-void Client::connectToHub( const string& hubAddr )
-{
-	// create hub. connect to it's signals
-	shared_ptr<Hub> pHub = getHub( hubAddr );
-	
-	// connect!
-	pHub->connect();
 }
 
 // ============================================================================
@@ -100,6 +94,7 @@ Client::Settings::Settings()
 	tcpPort      = 3196;
 	udpPort      = 11455;
 	connection   = "0.5"; // whatever this means
+	downloadDirectory = getenv("$HOME"); // TODO non portable
 }
 
 // ============================================================================
@@ -118,13 +113,6 @@ void Client::run()
 void Client::requestTransfer( Hub* pHub, const shared_ptr<DownloadRequest>& pRequest )
 {
 	// here decide if we are doing passive or active transfer
-	
-	// active only for now
-	// set up timeout (10 s )
-	pRequest->setExpiryTime( posix_time::second_clock::local_time() + posix_time::seconds(10) );
-	
-	pRequest->signalTransferCompleted.connect( boost::bind( &Client::fileListReceived, this, _1, _2 ) );
-	
 	// send ConnectToMe
 	string addr = str(format( "%1%:%2%") % pHub->localIp() % _tcpListener.port() );
 	
@@ -155,6 +143,55 @@ void Client::fileListReceived( vector<char>& data, DownloadRequest* pRequest )
 		cerr << "Error decodng file list: " << e.what() << endl;
 	}
 	
+}
+
+// ============================================================================
+// Download file list
+void Client::downloadFileList( const string& hub, const string& nick )
+{
+	// TODO convert address to canonical form
+	
+	HubMap::iterator hit =  _hubs.find( hub ) ;
+	
+	if ( hit == _hubs.end() )
+	{
+		throw std::logic_error("Can't donwload list from hub that is not connected");
+	}
+	
+	// TODO actually use download manager here
+	
+	shared_ptr<DownloadRequest> pRequest = shared_ptr<DownloadRequest>( new DownloadRequest );
+	
+	pRequest->setNick( nick );
+	pRequest->setFile( "files.xml.bz2" );
+	// set up timeout (10 s )
+	pRequest->setExpiryTime( posix_time::second_clock::local_time() + posix_time::seconds(10) );
+	pRequest->signalTransferCompleted.connect( boost::bind( &Client::fileListReceived, this, _1, _2 ) );
+	
+	requestTransfer( hit->second.get(), pRequest );
+}
+
+// ============================================================================
+// Download file
+void Client::downloadFile
+	( const string& hub
+	, const string& nick
+	, const string& path
+	, const string& tth
+	, uint64_t size
+	)
+{
+	// TODO check for duplicates
+
+	shared_ptr<FileDownload> pDownload( new FileDownload( this ) );
+	pDownload->setSource( hub, nick );
+	pDownload->setPath( path );
+	pDownload->setTth( tth );
+	pDownload->setSize( size );
+	
+	pDownload->start();
+	
+	_downloads.push_back( shared_ptr<Download>( pDownload ) );
 }
 
 } // mamespace

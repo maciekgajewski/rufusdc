@@ -42,6 +42,9 @@ Connection::Connection( Client* pClient, const string& address )
 // Destructor
 Connection::~Connection()
 {
+	_pSocket.reset(); // this will remove and close socket
+	_state = Disconnected;
+	cerr << "Connection destroyed" << endl;
 }
 
 // ============================================================================
@@ -172,7 +175,7 @@ void Connection::onConnect( const system::error_code& err )
 	else
 	{
 		// error
-		systemMessage( str(format("Error connecting to %1%: %1%") % _address % err.message() ) );
+		systemMessage( str(format("Error connecting to %1%: %2%") % _address % err.message() ) );
 	}
 }
 
@@ -403,13 +406,10 @@ void Connection::recvCommand()
 // Recv
 void Connection::recvData( uint64_t size )
 {
-	uint64_t bytesToReceive = size - _inBuffer.size();
 	// TODO do something if data still in buffer
 	if ( _inBuffer.size() > 0 )
 	{
-		cerr << "recvData: " << _inBuffer.size() << " bytes still in buffer" << endl;
-		_inBuffer.commit( _inBuffer.size() );
-		cerr << "after commit: " << _inBuffer.size()  << endl;
+		cerr << "WARNING: recvData: " << _inBuffer.size() << " bytes still in buffer" << endl;
 	}
 	
 	asio::async_read
@@ -418,7 +418,7 @@ void Connection::recvData( uint64_t size )
 		, boost::bind
 			( &Connection::recvEnoughData
 			, this
-			, bytesToReceive
+			, size
 			, asio::placeholders::error
 			, placeholders::bytes_transferred
 			)

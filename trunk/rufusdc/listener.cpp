@@ -22,19 +22,27 @@
 
 // local
 #include "client.h"
+#include "connectionrequest.h"
+#include "directconnection.h"
 
 #include "listener.h"
 
 namespace RufusDc
 {
 
+static const int TIMEOUT_TIMER_INTERVAL = 20; // [s]
+
 // ============================================================================
 // Constructor
 Listener::Listener( Client* pClient )
 	: _pParent( pClient )
 	, _acceptor( pClient->ioService() )
+	, _timer( pClient->ioService() )
 {
 	assert( pClient );
+	
+	_timer.expires_from_now(boost::posix_time::seconds(TIMEOUT_TIMER_INTERVAL));
+	_timer.async_wait( boost::bind( &Listener::onTimer, this ) );
 }
 
 // ============================================================================
@@ -68,7 +76,6 @@ void Listener::startListening()
 	
 	// start listening if there are requests
 	removeExpiredRequests();
-	removeCompletedDownloads();
 	
 	if ( ! _requests.empty() )
 	{
@@ -90,7 +97,6 @@ void Listener::onAccept( shared_ptr<tcp::socket> pSocket, const system::error_co
 {
 	if ( ! err )
 	{
-		removeCompletedDownloads();
 		removeExpiredRequests();
 	
 		// debug
@@ -99,14 +105,26 @@ void Listener::onAccept( shared_ptr<tcp::socket> pSocket, const system::error_co
 		// is there any request left?
 		if ( ! _requests.empty() )
 		{
-			shared_ptr<ActiveDownload> pDownload 
-				= shared_ptr<ActiveDownload>( new ActiveDownload( _pParent, pSocket ) );
+			shared_ptr<DirectConnection> pConnection 
+				= shared_ptr<DirectConnection>( new DirectConnection( _pParent, pSocket ) );
 				
-			pDownload->signalRequest.connect( boost::bind( &Listener::takeRequest, this, _1, _2 ) );
+			// connect
+			boost::signals::connection connection = pConnection->signalStateChanged.connect
+				( boost::bind
+					( &Listener::slotConnectionStateChanged
+					, this
+					, pConnection.get()
+					, _1
+					)
+				);
 			
-			pDownload->start();
+			pConnection->start();
 			
-			_downloads.push_back( pDownload );
+			ConnDesc cd;
+			cd.connection = pConnection;
+			cd.signalConnection = connection;
+			
+			_connections.push_back( cd );
 		
 			// wait for next
 			accept();
@@ -127,24 +145,15 @@ void Listener::onAccept( shared_ptr<tcp::socket> pSocket, const system::error_co
 
 // ============================================================================
 // Clear completed downloads
-void Listener::removeCompletedDownloads()
+void Listener::removeCompletedConnections()
 {
-	list< shared_ptr<ActiveDownload> >::iterator it = _downloads.begin();
+	assert(false); // is the method needed?
+	/*
+	list< shared_ptr<DirectConnection> >::iterator it = _downloads.begin();
 	while( it != _downloads.end() )
 	{
 		if ( (*it)->state() == Connection::Disconnected )
 		{
-			//BEGIN debug
-			const shared_ptr<DownloadRequest>& rq = (*it)->request();
-			if ( rq )
-			{
-				cerr << "Removing completed download from user " << rq->nick() << endl;
-			}
-			else
-			{
-				cerr << "Removing unassociated download" << endl;
-			}
-			//END debug
 			it = _downloads.erase( it );
 		}
 		else
@@ -152,11 +161,12 @@ void Listener::removeCompletedDownloads()
 			++it;
 		}
 	}
+	*/
 }
 
 // ============================================================================
 // Add expected connection
-void Listener::addRequest( const shared_ptr<DownloadRequest>& pRequest )
+void Listener::addRequest( const shared_ptr<ConnectionRequest>& pRequest )
 {
 	// is the first request?
 	if ( _requests.empty() && _acceptor.is_open() )
@@ -172,10 +182,6 @@ void Listener::addRequest( const shared_ptr<DownloadRequest>& pRequest )
 void Listener::accept()
 {
 	// create new socket for incoming connections
-	/*
-	_pSocket = shared_ptr<tcp::socket>( new tcp::socket( _pParent->ioService() ) );
-	// NOTE: wrong! cant use single pointer used by - possibly - multiple accept calls
-	*/
 	shared_ptr<tcp::socket> pSocket( new tcp::socket( _pParent->ioService() ) );
 	_acceptor.async_accept( *pSocket, boost::bind( &Listener::onAccept, this, pSocket, placeholders::error ) );
 }
@@ -184,12 +190,13 @@ void Listener::accept()
 // Removes expired requests
 void Listener::removeExpiredRequests()
 {
-	list< shared_ptr<DownloadRequest> >::iterator it = _requests.begin();
+	list< shared_ptr<ConnectionRequest> >::iterator it = _requests.begin();
 	while( it != _requests.end() )
 	{
 		if ( (*it)->isExpired() )
 		{
-			cerr << "Doenload requests of file "<< (*it)->file() << " from user " << (*it)->nick() << " expired" << endl;
+			cerr << "Connection requests to user " << (*it)->nick() << "@" <<  (*it)->hub() <<" expired" << endl;
+			(*it)->failed(Error("Timed out"));
 			it = _requests.erase( it );
 		}
 		else
@@ -200,25 +207,88 @@ void Listener::removeExpiredRequests()
 }
 
 // ============================================================================
-// Take request
-void Listener::takeRequest( const string& nick, shared_ptr<DownloadRequest>& out )
+// State changed
+void Listener::slotConnectionStateChanged( DirectConnection* pConnection,  int state )
 {
-	list< shared_ptr<DownloadRequest> >::iterator it = _requests.begin();
+	// serach and remove approrpriate ConDesc
+	list< ConnDesc >::iterator it = _connections.begin();
 	
-	while( it != _requests.end() ) 
+	while( it != _connections.end() ) 
 	{
-		if ( (*it)->nick() == nick )
+		if ( it->connection.get() == pConnection )
 		{
-			out = *it;
-			_requests.erase( it );
+			// stop observing
+			it->signalConnection.disconnect();
+			
+			// handle state change
+			connectionStateChanged( it->connection, state );
+			
+			// stop waitying for it
+			_connections.erase( it );
 			return;
 		}
 		++it;
 	}
 	
-	// when not found, leave out intouched
-	cerr << "Listener:: Cant fin'd request for nick " << nick << endl;
-	
+	cerr << "Listener::slotConnectionStateChanged: Unexpected connection changed state" << endl;
 }
+
+// ============================================================================
+// Connection state changed
+void Listener::connectionStateChanged( shared_ptr<DirectConnection> pConnection, int state )
+{
+	string nick = pConnection->nick();
+	
+	// find request for the connection
+	shared_ptr<ConnectionRequest> pRequest;
+	list< shared_ptr<ConnectionRequest> >::iterator it = _requests.begin();
+	
+	while( it != _requests.end() ) 
+	{
+		if ( (*it)->nick() == nick )
+		{
+			pRequest = *it;
+			_requests.erase( it );
+			break;
+		}
+		++it;
+	}
+	
+	// is there a request?
+	if ( pRequest )
+	{
+		
+		if ( state == Connection::Disconnected )
+		{
+			//cerr << "Listener: Conn failed" << endl;
+			pRequest->failed(Error("Connection failed"));
+		}
+		else if ( state == Connection::Connected )
+		{
+			//cerr << "Listener: Conn successfull" << endl;
+			pRequest->connected( pConnection );
+		}
+		else
+		{
+			cerr << "Listener: Conn w unknown state. Dropping";
+		}
+	}
+	else
+	{
+		cerr << "Listener: Conn w/o request. Dropping.";
+		pConnection->disconnect();
+	}
+}
+
+// ============================================================================
+// on timer
+void Listener::onTimer()
+{
+	removeExpiredRequests();
+	
+	// se you in next 20 s
+	_timer.expires_at( _timer.expires_at() + boost::posix_time::seconds(TIMEOUT_TIMER_INTERVAL) );
+	_timer.async_wait( boost::bind( &Listener::onTimer, this ) );}
+
 
 }

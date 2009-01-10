@@ -13,11 +13,13 @@ set(
 	userinfo.cpp
 	connection.cpp
 	listener.cpp
-	activedownload.cpp
-	downloadrequest.cpp
+	directconnection.cpp
+	connectionrequest.cpp
 	filelist.cpp
 	download.cpp
 	filedownload.cpp
+	filelistdownload.cpp
+	error.cpp
 )
 
 

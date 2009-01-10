@@ -30,7 +30,6 @@
 // local
 #include "protocolexception.h"
 #include "client.h"
-#include "downloadrequest.h"
 
 #include "hub.h"
 
@@ -204,7 +203,8 @@ void Hub::commandMyINFO( const list<string>& params )
 		{
 			throw;
 		}
-		cerr << "Recoverable error when parsing user '"<< info.nick() << "' params: " << e.what() << endl;
+		// DEBUG
+		//cerr << "Recoverable error when parsing user '"<< info.nick() << "' params: " << e.what() << endl;
 	}
 	
 	UserMap::iterator uit = _users.find( info.nick() );
@@ -252,7 +252,7 @@ void Hub::commandForceMove( const list<string>& params )
 
 // ============================================================================
 // get users
-list<UserInfo> Hub::getUsers()
+list<UserInfo> Hub::getUsers() const
 {
 	lock_guard<mutex> guard( _usersMutex );
 	
@@ -264,6 +264,17 @@ list<UserInfo> Hub::getUsers()
 	}
 
 	return result;
+}
+
+// ============================================================================
+// Has user
+bool Hub::hasUser( const string& nick ) const
+{
+	lock_guard<mutex> guard( _usersMutex );
+	
+	UserMap::const_iterator it = _users.find( nick );
+	
+	return it != _users.end();
 }
 
 // ============================================================================

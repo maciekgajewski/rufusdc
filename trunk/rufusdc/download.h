@@ -34,6 +34,16 @@ class Download
 	friend class Client;
 
 public:
+
+	/// Stat of the download
+	enum State
+	{
+		Idle,       ///< Idle. No transfer in progress
+		Active,     ///< Active - data is transfered
+		Completed,  ///< Completed successfully
+		Failed      ///< Failed
+	};
+
 	virtual ~Download();
 	
 	/**
@@ -49,6 +59,8 @@ public:
 	 */
 	virtual void start() = 0;
 	
+	State state() const { return _state; }
+	
 protected:
 
 	/// Constructor
@@ -62,6 +74,12 @@ protected:
 	
 	/// source user nick
 	string _nick;
+	
+	/// Download state
+	State _state;
+	
+	/// Sets current state
+	void setState( State s ) { _state = s; }
 
 };
 

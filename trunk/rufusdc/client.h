@@ -26,8 +26,8 @@
 #include <boost/thread/mutex.hpp>
 
 // local
-#include "downloadrequest.h"
 #include "listener.h"
+#include "error.h"
 
 namespace RufusDc
 {
@@ -39,6 +39,7 @@ class Hub;
 class Operation;
 class FileList;
 class Download;
+class DirectConnection;
 
 /**
 * @brief Main DC client object
@@ -68,6 +69,9 @@ public:
 		
 		string  downloadDirectory; ///< Directory where downloade files are stored
 	};
+
+	/// Handler function called when conection request ends
+	typedef boost::function< void ( const Error&, const shared_ptr<DirectConnection>&) > ConnectionHandler;
 
 	Client();
 	~Client();
@@ -103,13 +107,23 @@ public:
 	*/
 	io_service& ioService() { return _service; }
 	
+	
 	/**
-	 * @brief Requests transfer
-	 * This is low-level function used to by higher-level dowload managers to request actual conection.
-	 * @param hub     hub to which source is conected
-	 * @param request request description
+	 * @brief Requersts direct connection to another user.
+	 * This method can yield three kinds of results:
+	 *  - connection is successfull, handler is colled with connnection pointer
+	 *  - connection couldn't be created, handler is called with error code
+	 *  - hub is not connected or there is no such user - exception is thrown
+	 * @param hub  hub to which owner of file is connected
+	 * @param nick user's nick
+	 * @param handler handler colled after connection
+	 * @exception std::logic_error when hub is not connected, or there is no such user.
 	 */
-	void requestTransfer( Hub* pHub, const shared_ptr<DownloadRequest>& pRequest );
+	void requestConnection
+		( const string& hub
+		, const string& nick
+		, const ConnectionHandler& handler
+		);
 	
 	/**
 	 * @brief Starts file download
@@ -136,6 +150,15 @@ public:
 	 */
 	void downloadFileList( const string& hub, const string& nick );
 	
+	
+	/**
+	 * @brief Called by FileListDownload
+	 * States that file list was succesfully downloaded
+	 * @param pList received file list
+	 * @internal
+	 */
+	void fileListReceived( const shared_ptr<FileList>& pList );
+	
 	// signals
 	
 	/// New system message from hub. TODO unused ?
@@ -144,7 +167,7 @@ public:
 	boost::signal< void ( Hub*, const string&) > signalChatMessage;
 	
 	/// File list received
-	boost::signal< void (shared_ptr<FileList>) > signalIncomingFileList;
+	boost::signal< void (const shared_ptr<FileList>&) > signalIncomingFileList;
 	
 private:
 
@@ -180,9 +203,6 @@ private:
 	
 	/// Receives all hubs sys messages
 	void onHubSystemMessage( Hub* pHub, const string& msg );
-	
-	/// Boost slot, called when file list is downloaded succesfully.
-	void fileListReceived( vector<char>& data, DownloadRequest* pRequest );
 };
 
 }

@@ -58,26 +58,17 @@ public:
 	/// starts download
 	virtual void start();
 
-	void setSize( const uint64_t& value )
-	{
-		_size = value;
-	}
+	/// Sets expected file size
+	void setSize( const uint64_t& value ) { _size = value; }
 	
-
-	uint64_t size() const
-	{
-		return _size;
-	}
+	/// Returns expected file size
+	uint64_t size() const{ return _size; }
 	
-
 private:
 	FileDownload( Client* pParent );
 	
 	/// Initializes temporary file
 	void createTemporaryFile();
-	
-	/// Request transfer of file chunk
-	void requestTransfer();
 	
 	/// Original file path
 	string _path;
@@ -106,11 +97,6 @@ private:
 
 	// slots
 	
-	/// On hub state changed
-	void hubStateChanged( int state );
-
-	/// On incoming file data
-	void dataIncoming( vector<char>& data, uint64_t offset );
 };
 
 }

@@ -23,6 +23,7 @@ namespace RufusDc
 Download::Download( Client* pParent )
 	: _pParent( pParent )
 {
+	_state = Idle;
 }
 
 // ============================================================================

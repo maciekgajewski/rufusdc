@@ -16,7 +16,11 @@
 #ifndef RUFUSDCDOWNLOAD_H
 #define RUFUSDCDOWNLOAD_H
 
+// std
 #include <string>
+
+// boost
+#include <boost/shared_ptr.hpp>
 
 namespace RufusDc
 {
@@ -31,9 +35,10 @@ class Client;
 */
 class Download
 {
-	friend class Client;
-
 public:
+
+	/// pointer type
+	typedef boost::shared_ptr<Download> ptr;
 
 	/// Stat of the download
 	enum State
@@ -64,10 +69,7 @@ public:
 protected:
 
 	/// Constructor
-	Download( Client* pParent );
-	
-	/// Parent object
-	Client* _pParent;
+	Download();
 	
 	/// Source hub address
 	string _hub;

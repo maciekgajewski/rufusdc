@@ -39,7 +39,9 @@ static const int CONNECTION_REQUEST_TIMEOUT = 10; // conenction request timeot [
 // ============================================================================
 // Constructor
 Client::Client()
-	: _tcpListener( this )
+	: Singleton< Client >()
+	, _tcpListener( this )
+	, _connectionManager( this )
 {
 }
 
@@ -47,43 +49,6 @@ Client::Client()
 // Destructor
 Client::~Client()
 {
-}
-
-// ============================================================================
-// get hub
-shared_ptr<Hub> Client::getHub( const string& addr )
-{
-	lock_guard<mutex> guard( _hubsMutex );
-	
-	// TODO convert addr to canonical form
-	
-	HubMap::iterator it = _hubs.find( addr );
-	
-	if ( it != _hubs.end() )
-	{
-		return it->second;
-	}
-	
-	shared_ptr<Hub> pHub = shared_ptr<Hub>( new Hub( this, addr ) );
-	pHub->signalChatMessage.connect( boost::bind( &Client::onHubChatMessage, this, pHub.get(), _1 ) );
-	pHub->signalSystemMessage.connect( boost::bind( &Client::onHubSystemMessage, this, pHub.get(), _1 ) );
-	
-	_hubs[addr] = pHub;
-	return pHub;
-}
-
-// ============================================================================
-// on hub message - slot 
-void Client::onHubChatMessage( Hub* pHub, const string& msg )
-{
-	signalChatMessage( pHub, msg );
-}
-
-// ============================================================================
-// on hub sys msg - slot
-void Client::onHubSystemMessage( Hub* pHub, const string& msg )
-{
-	signalSystemMessage( pHub, msg );
 }
 
 // ============================================================================
@@ -116,84 +81,5 @@ void Client::run()
 	_service.run();
 }
 
-// ============================================================================
-// Download file list
-void Client::downloadFileList( const string& hub, const string& nick )
-{
-	shared_ptr<FileListDownload> pDownload( new FileListDownload( this ) );
-	
-	pDownload->setSource( hub, nick );
-	pDownload->start();
-	
-	_downloads.push_back( shared_ptr<Download>( pDownload ) );
-}
-
-// ============================================================================
-// Download file
-void Client::downloadFile
-	( const string& hub
-	, const string& nick
-	, const string& path
-	, const string& tth
-	, uint64_t size
-	)
-{
-	// TODO check for duplicates
-
-	shared_ptr<FileDownload> pDownload( new FileDownload( this ) );
-	pDownload->setSource( hub, nick );
-	pDownload->setPath( path );
-	pDownload->setTth( tth );
-	pDownload->setSize( size );
-	
-	pDownload->start();
-	
-	_downloads.push_back( shared_ptr<Download>( pDownload ) );
-}
-
-// ============================================================================
-// Request connection
-void Client::requestConnection
-	( const string& hub
-	, const string& nick
-	, const ConnectionHandler& handler
-	)
-{
-	cerr << "Requesting conection to user "<<nick<<"@"<<hub<<endl;
-	HubMap::iterator hit =  _hubs.find( hub ) ;
-	
-	if ( hit == _hubs.end() )
-	{
-		throw std::logic_error("Hub is not connected");
-	}
-	
-	Hub* pHub = hit->second.get();
-	
-	if ( ! pHub->hasUser( nick ) )
-	{
-		throw std::logic_error("User not connected");
-	}
-	
-	// sent request
-	string addr = str(format( "%1%:%2%") % pHub->localIp() % _tcpListener.port() );
-	pHub->sendCommand( "$ConnectToMe", assign::list_of( nick )( addr ) );
-	
-	// ok, file the request form
-	shared_ptr<ConnectionRequest> pRequest( new ConnectionRequest );
-	pRequest->setNick( nick );
-	pRequest->setHub( hub );
-	pRequest->setConnectedHandler( handler );
-	pRequest->setExpiryTime( posix_time::second_clock::local_time() + posix_time::seconds(CONNECTION_REQUEST_TIMEOUT) );
-	
-	_tcpListener.addRequest( pRequest );
-}
-
-// ============================================================================
-// File list received
-void Client::fileListReceived( const shared_ptr<FileList>& pList )
-{
-	// just emit signal
-	signalIncomingFileList( pList );
-}
 
 } // mamespace

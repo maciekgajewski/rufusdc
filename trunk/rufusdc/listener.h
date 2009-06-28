@@ -67,12 +67,6 @@ public:
 	 */
 	void stopListening();
 	
-	/**
-	 * @brief Adds download request to the queue
-	 * @param pRequest request object
-	 */
-	void addRequest( const shared_ptr<ConnectionRequest>& pRequest );
-	
 private:
 
 	int _port; ///< TCP port
@@ -80,23 +74,7 @@ private:
 	/// Parent object
 	Client* _pParent;
 	
-	/// Small structure holding pointer to connection and signals-slot connection to it
-	struct ConnDesc
-	{
-		shared_ptr<DirectConnection> connection;
-		boost::signals::connection   signalConnection;
-	};
-	
-	/// Conenctions waiting for dispatching
-	list< ConnDesc > _connections;
-	
-	/// Queue of requests
-	list< shared_ptr<ConnectionRequest> > _requests;
-	
 	tcp::acceptor _acceptor; ///< Accepts incoming connection
-	
-	/// Timout timer
-	boost::asio::deadline_timer _timer;
 	
 	/// Accept handler
 	void onAccept( shared_ptr<tcp::socket> pSocket, system::error_code err );
@@ -104,20 +82,6 @@ private:
 	/// Request accept
 	void accept();
 	
-	/// Removed completed connections from list
-	void removeCompletedConnections();
-	
-	/// Removes timeouted requests from queue
-	void removeExpiredRequests();
-	
-	/// Slot: handles connection state change. Calls connectionStateChanged
-	void slotConnectionStateChanged( DirectConnection* pConnection, int state );
-	
-	/// Called when connection state changed
-	void connectionStateChanged( shared_ptr<DirectConnection> pConnection, int state );
-	
-	/// Timer used to periodically remove timeout requests
-	void onTimer();
 };
 
 }

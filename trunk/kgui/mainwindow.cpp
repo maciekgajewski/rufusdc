@@ -17,13 +17,13 @@
 #include <KLocalizedString>
 #include <KAction>
 #include <KToolBar>
-#include <KTabWidget>
 
 #include "hub.h"
 #include "client.h"
 #include "connectdialog.h"
 #include "hubwidget.h"
 #include "filelistwidget.h"
+#include "tabwidget.h"
 
 #include "mainwindow.h"
 
@@ -93,7 +93,7 @@ void MainWindow::connectToHub( const QString& str )
 	Hub* pHub = _pClient->createHub( str );
 	HubWidget* pWidget = new HubWidget( pHub, this );
 	pHub->connect();
-	int index = _pTabs->addTab( pWidget, str );
+	int index = _pTabs->addTab( pWidget );
 	_pTabs->setCurrentIndex( index );
 }
 
@@ -101,7 +101,8 @@ void MainWindow::connectToHub( const QString& str )
 // Initializes GUI elements
 void MainWindow::initGui()
 {
-	_pTabs = new KTabWidget( this );
+	_pTabs = new TabWidget( this );
+	
 	setCentralWidget( _pTabs );
 }
 
@@ -109,12 +110,10 @@ void MainWindow::initGui()
 // file list received
 void MainWindow::fileListReceived( const boost::shared_ptr<RufusDc::FileList>& pFileList )
 {
-	FileListWidget* pWidget = new FileListWidget( this );
+	FileListWidget* pWidget = new FileListWidget( _pClient, this );
 	pWidget->setFileList( pFileList );
 	
-	QString title = QString( i18n("%1's file list")).arg( pFileList->nick().c_str() );
-	
-	int index = _pTabs->addTab( pWidget, title );
+	int index = _pTabs->addTab( pWidget );
 	_pTabs->setCurrentIndex( index );
 }
 

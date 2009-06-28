@@ -30,6 +30,7 @@
 // local
 #include "protocolexception.h"
 #include "client.h"
+#include "downloadmanager.h"
 
 #include "hub.h"
 
@@ -38,8 +39,8 @@ namespace RufusDc
 
 // ============================================================================
 // Constructor
-Hub::Hub( Client* pParent, const string& addr )
-	: Connection( pParent, addr )
+Hub::Hub( const string& addr )
+	: Connection( addr )
 {
 	// init handlers
 	_handlers["$Lock"]           = boost::bind( &Hub::commandLock, this, _1 );
@@ -54,6 +55,9 @@ Hub::Hub( Client* pParent, const string& addr )
 	_handlers["$HubTopic"]       = boost::bind( &Hub::commandHubTopic, this, _1 );
 	_handlers["$UserIP"]         = boost::bind( &Hub::commandUserIP, this, _1 );
 	_handlers["$Supports"]       = boost::bind( &Hub::commandSupports, this, _1 );
+	_handlers["$Search"]         = boost::bind( &Hub::commandSearch, this, _1 );
+	_handlers["$UserCommand"]    = boost::bind( &Hub::commandUserCommand, this, _1 );
+	_handlers["$OpList"]         = boost::bind( &Hub::commandOpList, this, _1 );
 }
 
 // ============================================================================
@@ -87,11 +91,12 @@ void Hub::commandLock( const list<string>& params )
 	if ( params.size() > 0 )
 	{
 		const string& lock = params.front();
+		std::string nick = Client::ref().settings().nick;
 		
 		string key = calculateKey( lock );
 		sendCommand( "$Supports", assign::list_of("NoGetINFO")("NoHello")("UserIP2") ); // advertise other extesions here
 		sendCommand( "$Key", assign::list_of(key) );
-		sendCommand( "$ValidateNick", assign::list_of( escape(_pParent->settings().nick )) );
+		sendCommand( "$ValidateNick", assign::list_of( escape( nick )) );
 	}
 	else
 	{
@@ -107,7 +112,7 @@ void Hub::commandHubName( const list<string>& params )
 	{
 		_hubName = params.front();
 		
-		signalNameChnged( _hubName );
+		signalNameChanged( _hubName );
 	}
 	else
 	{
@@ -157,12 +162,10 @@ void Hub::commandHello( const list<string>& params )
 // send $MyINFO
 void Hub::sendMyINFO()
 {
-	assert( _pParent );
-	
-	string connection  = escape( _pParent->settings().connection );
-	string email       = escape( _pParent->settings().email );
-	string nick        = escape( _pParent->settings().nick );
-	string description = escape( _pParent->settings().description );
+	string connection  = escape( Client::ref().settings().connection );
+	string email       = escape( Client::ref().settings().email );
+	string nick        = escape( Client::ref().settings().nick );
+	string description = escape( Client::ref().settings().description );
 	
 	uint64_t sharesize = 15372667328; // TODO get from somwhere
 	
@@ -170,9 +173,9 @@ void Hub::sendMyINFO()
 	
 	// create tag
 	string version = "0.707"; // TODO get from some version.h
-	string mode    = _pParent->settings().tcpPort > 0 ? "A" : "P"; // TODO add SOCKS5
+	string mode    = Client::ref().settings().tcpPort > 0 ? "A" : "P"; // TODO add SOCKS5
 	string hubs    = "1/0/0"; // TODO get actual data from client
-	string slots   = str(format("%d") % _pParent->settings().uploadSlots );// TODO substract used slots
+	string slots   = str(format("%d") % Client::ref().settings().uploadSlots );// TODO substract used slots
 	
 	string tag     = str(format("<++V:%1%,M:%2%,H:%3%,S:%4%>") % version % mode % hubs % slots );
 	
@@ -284,7 +287,7 @@ void Hub::commandHubTopic( const list<string>& params )
 	if ( params.size() > 0 )
 	{
 		_hubTopic = params.front();
-		signalTopicChnged( _hubTopic );
+		signalTopicChanged( _hubTopic );
 		systemMessage( str(format("Hub topic is %1%") % _hubTopic ) );
 	}
 	else
@@ -297,7 +300,7 @@ void Hub::commandHubTopic( const list<string>& params )
 // Request file list
 void Hub::requestFileList( const string& nick )
 {
-	_pParent->downloadFileList( _address, nick );
+	DownloadManager::ref().downloadFileList( _address, nick );
 }
 
 // ============================================================================
@@ -320,6 +323,34 @@ void Hub::commandSupports( const list<string>& params )
 // ============================================================================
 // Connect to me
 void Hub::commandConnectToMe( const list<string>& params )
+{
+	// TODO
+}
+
+// ============================================================================
+// Search
+void Hub::commandSearch( const list<string>& params )
+{
+	// TODO
+}
+
+// ============================================================================
+// Send chat message
+void Hub::sendChatMessage( const string& msg )
+{
+	send( str(format("<%1%> %2%") % Client::ref().settings().nick % msg ) );
+}
+
+// ============================================================================
+// User command
+void Hub::commandUserCommand( const list<string>& params )
+{
+	// TODO
+}
+
+// ============================================================================
+// Op list
+void Hub::commandOpList( const list<string>& params )
 {
 	// TODO
 }

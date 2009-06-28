@@ -22,15 +22,20 @@
 
 // qt
 #include <QDomDocument>
+#include <QContextMenuEvent>
+#include <QVBoxLayout>
 
 // KDE
 #include <KIcon>
 #include <KLocalizedString>
 #include <KMimeType>
 #include <KIconLoader>
+#include <KAction>
+#include <KMenu>
 
 // local
 #include "utils.h"
+#include "client.h"
 #include "filelistwidget.h"
 
 namespace KRufusDc
@@ -38,11 +43,22 @@ namespace KRufusDc
 
 // ============================================================================
 // Constructor
-FileListWidget::FileListWidget( QWidget* parent ): QTreeWidget( parent )
+FileListWidget::FileListWidget( Client* pClient, QWidget* parent )
+	: TabContent( parent )
+	, _pClient( pClient )
 {
-	// init columns
-	setHeaderLabels( QStringList() << i18n("Name") << i18n("Size") );
+	Q_ASSERT( pClient );
 	
+	_pTree = new QTreeWidget( this );
+	QVBoxLayout* pLayout = new QVBoxLayout( this );
+	pLayout->addWidget( _pTree );
+	
+	// init columns
+	_pTree->setHeaderLabels( QStringList() << i18n("Name") << i18n("Size") );
+	
+	// init visual tab properties
+	setTabTitle( i18n("File list") );
+	setTabIcon( KIcon("view-list-tree") );
 }
 
 // ============================================================================
@@ -74,7 +90,7 @@ void FileListWidget::setFileList( boost::shared_ptr< RufusDc::FileList > pFileLi
 	}
 	
 	// populate
-	clear();
+	_pTree->clear();
 	
 	QDomNodeList topLevelElements = root.childNodes();
 	for( int i = 0; i < topLevelElements.size(); i++ )
@@ -87,11 +103,11 @@ void FileListWidget::setFileList( boost::shared_ptr< RufusDc::FileList > pFileLi
 			/// directory
 			if ( element.tagName() == "Directory" )
 			{
-				addTopLevelItem( createDirectoryItem( element ) );
+				_pTree->addTopLevelItem( createDirectoryItem( element, "/" ) );
 			}
 			else if ( element.tagName() == "File" )
 			{
-				addTopLevelItem( createFileItem( element ) );
+				_pTree->addTopLevelItem( createFileItem( element, "/" ) );
 			}
 			else
 			{
@@ -100,18 +116,27 @@ void FileListWidget::setFileList( boost::shared_ptr< RufusDc::FileList > pFileLi
 		}
 	}
 	
-	resizeColumnToContents( 0 );
+	// set first coulm with to some value
+	_pTree->setColumnWidth( 0, 250 );
+	
+	// change title
+	QString title = QString( i18n("%1's file list")).arg( pFileList->nick().c_str() );
+	setTabTitle( title );
 }
 
 // ============================================================================
 // Create directory
-QTreeWidgetItem* FileListWidget::createDirectoryItem( const QDomElement& element )
+QTreeWidgetItem* FileListWidget::createDirectoryItem( const QDomElement& element, const QString& parentPath )
 {
 	QString name = element.attribute( "Name" );
+	QString path = parentPath + name + "/";
 	QTreeWidgetItem* pDir = new  QTreeWidgetItem();
 	
 	pDir->setText( ColumnName, name );
 	pDir->setIcon( ColumnName, KIcon("inode-directory") );
+	
+	pDir->setData( 0, RoleType, Dir );
+	pDir->setData( 0, RolePath, path );
 	
 	// add children
 	QDomNodeList children = element.childNodes();
@@ -125,11 +150,11 @@ QTreeWidgetItem* FileListWidget::createDirectoryItem( const QDomElement& element
 			/// directory
 			if ( child.tagName() == "Directory" )
 			{
-				pDir->addChild( createDirectoryItem( child ) );
+				pDir->addChild( createDirectoryItem( child, path ) );
 			}
 			else if ( child.tagName() == "File" )
 			{
-				pDir->addChild( createFileItem( child ) );
+				pDir->addChild( createFileItem( child, path ) );
 			}
 			else
 			{
@@ -143,12 +168,13 @@ QTreeWidgetItem* FileListWidget::createDirectoryItem( const QDomElement& element
 
 // ============================================================================
 // Create file
-QTreeWidgetItem* FileListWidget::createFileItem( const QDomElement& element )
+QTreeWidgetItem* FileListWidget::createFileItem( const QDomElement& element, const QString& parentPath )
 {
 	// decode XML
 	QString name = element.attribute( "Name" );
 	QString size = element.attribute( "Size" );
 	QString tth = element.attribute( "TTH" );
+	QString path = parentPath + name;
 	
 	quint64 sizeValue = size.toLongLong();
 	QString sizeText = sizeToString( sizeValue );
@@ -165,8 +191,50 @@ QTreeWidgetItem* FileListWidget::createFileItem( const QDomElement& element )
 
 	pFile->setData( 0, RoleSize, sizeValue );
 	pFile->setData( 0, RoleTTH, tth );
+	pFile->setData( 0, RoleType, File );
+	pFile->setData( 0, RolePath, path );
 	
 	return pFile;
+}
+
+// ============================================================================
+// Context
+void FileListWidget::contextMenuEvent( QContextMenuEvent* pEvent )
+{
+	QTreeWidgetItem* pItem = _pTree->currentItem();
+	
+	if ( pItem && pItem->data( 0, RoleType ) == File )
+	{
+		
+		// get selection
+		int row = _pTree->selectionModel()->currentIndex().row();
+			
+		// init menu
+		KAction actionDownloadFile( KIcon("go-down"), i18n("Download file"), this );
+		KMenu menu( this );
+		
+		menu.addTitle( i18n("File") );
+		menu.addAction( & actionDownloadFile );
+		
+		QAction* pRes = menu.exec( pEvent->globalPos() );
+		
+		// handle selection
+		if ( pRes == & actionDownloadFile )
+		{
+			// extract data
+			quint64 size = pItem->data( 0, RoleSize ).value<quint64>();
+			QByteArray tth = pItem->data( 0, RoleTTH ).value<QByteArray>();
+			QByteArray path = pItem->data( 0, RolePath ).value<QByteArray>();
+		
+			_pClient->downloadFile
+				( _pFileList->hub().c_str()
+				, _pFileList->nick().c_str()
+				, path
+				, tth
+				, size
+				);
+		}
+	}
 }
 
 } // namespace

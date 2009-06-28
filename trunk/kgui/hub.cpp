@@ -38,23 +38,28 @@ using namespace boost;
 
 // ============================================================================
 // Constructor
-Hub::Hub( const shared_ptr<RufusDc::Hub>& pHub, Client *parent )
+Hub::Hub( const QString& addr, Client *parent )
 	: QObject( parent )
 	, _pParent( parent )
+	, _address( addr )
 {
 	Q_ASSERT( parent );
 	
-	_thread = new ClientThreadHub( parent, pHub );
+	_thread = new ClientThreadHub( parent, addr );
 	_thread->setHubEncoding( "WINDOWS-1250" );
 	_thread->moveToThread( &parent->clientThread() );
+	
+	// start the object in worker thread
+	QMetaObject::invokeMethod( _thread, "start", Qt::QueuedConnection );
 	
 	
 	// connect self to QObject in the otherthread
 	QObject::connect( this, SIGNAL(wtRequestFileList(const QString&)), _thread,  SLOT(utRequestFileList(const QString&)) );
-	QObject::connect( _thread, SIGNAL(signalWtMessage(int,const QString&)), SLOT(wtMessage(int,const QString&)) );
+	QObject::connect( this, SIGNAL(wtSendChatMessage(const QString&)), _thread,  SLOT(utSendChatMessage(const QString&)) );
 	
-	// cache this ASAP, to not fiddle threads later
-	_address = pHub->address().c_str();
+	QObject::connect( _thread, SIGNAL(signalWtMessage(int,const QString&)), SLOT(wtMessage(int,const QString&)) );
+	QObject::connect( _thread, SIGNAL(signalWtTopicChanged(const QString&)), SLOT(wtTopicChanged(const QString&)) );
+	QObject::connect( _thread, SIGNAL(signalWtNameChanged(const QString&)), SLOT(wtNameChanged(const QString&)) );
 }
 
 // ============================================================================
@@ -93,6 +98,35 @@ void Hub::requestFileList( const QString& nick )
 {
 	Q_EMIT 	wtRequestFileList( nick );
 
+}
+
+// ============================================================================
+// name changed
+void Hub::wtNameChanged( const QString& name )
+{
+	if ( name != _name )
+	{
+		_name = name;
+		Q_EMIT hubNameChanged( name );
+	}
+}
+
+// ============================================================================
+// topic changed
+void Hub::wtTopicChanged( const QString& topic )
+{
+	if ( topic != _topic )
+	{
+		_topic = topic;
+		Q_EMIT hubTopicChanged( topic );
+	}
+}
+
+// ============================================================================
+// Send chat message
+void Hub::sendChatMessage( const QString& msg )
+{
+	wtSendChatMessage( msg );
 }
 
 

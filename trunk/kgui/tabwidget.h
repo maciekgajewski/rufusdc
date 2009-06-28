@@ -13,23 +13,49 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-#include "download.h"
+#ifndef KRUFUSDCTABWIDGET_H
+#define KRUFUSDCTABWIDGET_H
 
-namespace RufusDc
+#include <KTabWidget>
+
+namespace KRufusDc
 {
 
-// ============================================================================
-// Consrtructor
-Download::Download()
+class TabContent;
+
+/**
+* Tab widget holding TabContent widgets.
+* @author Maciek Gajewski <maciej.gajewski0@gmail.com>
+*/
+class TabWidget : public KTabWidget
 {
-	_state = Idle;
+	Q_OBJECT
+
+public:
+	TabWidget( QWidget* parent = NULL, Qt::WindowFlags f = 0 );
+	virtual ~TabWidget();
+	
+	/// Adds tab.
+	///@return tab widget
+	int addTab( TabContent* pTab );
+	
+private Q_SLOTS:
+
+	/// Tab close request
+	void tabCloseRequest( QWidget* pTab );
+	
+	/// Handles tab title change
+	void tabTitleChanged( const QString& title );
+	
+	/// Handles tab icon change
+	void tabIconChanged( const QIcon& icon );
+
+};
+
 }
 
-// ============================================================================
-// Destructor
-Download::~Download()
-{
-}
+#endif // KRUFUSDCTABWIDGET_H
+
+// EOF
 
 
-}

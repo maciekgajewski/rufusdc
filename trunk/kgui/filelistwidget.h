@@ -28,19 +28,25 @@ namespace RufusDc
 	class FileList;
 }
 
+// local
+#include "tabcontent.h"
+
+
 namespace KRufusDc
 {
+
+class Client;
 
 /**
 * Tree widget displaying remote user's file list.
 * @author Maciek Gajewski <maciej.gajewski0@gmail.com>
 */
-class FileListWidget : public QTreeWidget
+class FileListWidget : public TabContent
 {
 	Q_OBJECT
 
 public:
-	FileListWidget( QWidget* parent );
+	FileListWidget( Client* pClient, QWidget* parent );
 	virtual ~FileListWidget();
 	
 	/**
@@ -64,17 +70,35 @@ private:
 	enum Roles
 	{
 		RoleSize = Qt::UserRole + 2611, ///< File size 
-		RoleTTH                         ///< TTH
+		RoleTTH,                        ///< TTH
+		RoleType,                       ///< Type (Dir or File );
+		RolePath                        ///< Path to file
+	};
+	
+	/// Item type
+	enum Type
+	{
+		File, ///< Plain file
+		Dir   ///< Directory
 	};
 
-	/// Creates directory item from XML element
-	QTreeWidgetItem* createDirectoryItem( const QDomElement& element );
+	/// Client implementation
+	Client *_pClient;
 	
-	/// Createsfile item from XML element
-	QTreeWidgetItem* createFileItem( const QDomElement& element );
-	
+	/// Inside tree widget
+	QTreeWidget* _pTree;
+
 	/// The file list
 	boost::shared_ptr< RufusDc::FileList > _pFileList;
+	
+	/// Creates directory item from XML element
+	QTreeWidgetItem* createDirectoryItem( const QDomElement& element, const QString& parentPath );
+	
+	/// Createsfile item from XML element
+	QTreeWidgetItem* createFileItem( const QDomElement& element, const QString& parentPath );
+	
+	/// Opens context menu
+	virtual void contextMenuEvent( QContextMenuEvent* pEvent );
 };
 
 }

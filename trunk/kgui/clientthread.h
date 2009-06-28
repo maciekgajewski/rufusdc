@@ -79,6 +79,13 @@ public Q_SLOTS:
 	// cross-thread slots
 	void slotConnectHub( const QString& addr );
 	void slotDisconnectHub( const QString& addr );
+	void slotDownloadFile
+		( const QByteArray& hub
+		, const QByteArray& nick
+		, const QByteArray& path
+		, const QByteArray& tth
+		, quint64 size
+		);
 	
 	/// Runs client form within the message loop
 	void runClient();

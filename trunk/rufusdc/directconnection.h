@@ -34,14 +34,19 @@ namespace RufusDc
 using namespace boost;
 using namespace std;
 
+class DirectConnectionManager;
+
 /**
-* @brief Directo conection to antoher DC client
+* @brief Direct connection to antoher DC client
 * @author Maciek Gajewski <maciej.gajewski0@gmail.com>
 */
 class DirectConnection : public Connection
 {
 
 public:
+
+	/// pointer type
+	typedef boost::shared_ptr< DirectConnection > ptr;
 
 	/// Transfer direction requested by peer
 	enum Direction
@@ -59,7 +64,10 @@ public:
 	/// Hadler called upon operation completion
 	typedef boost::function< void ( const Error& ) > CompletionHandler;
 
-	DirectConnection( Client* pClient, shared_ptr<tcp::socket> pSocket );
+	/// Creates connected connection
+	DirectConnection( DirectConnectionManager* pParent, shared_ptr<tcp::socket> pSocket );
+	
+	/// Destructor
 	virtual ~DirectConnection();
 	
 	/// Starts communication
@@ -91,6 +99,12 @@ public:
 		, const CompletionHandler& completionHandler
 		);
 	
+	/// Returns transfer speed - mean from beggign of transfer [b/s]
+	double totalTransferSpeed() const;
+	
+	/// Returns current transfer speed [b/s]
+	double currentTransferSpeed() const { return _currentTransferSpeed; }
+	
 private:
 
 	/**
@@ -100,13 +114,29 @@ private:
 	 */
 	virtual void onIncomingChat( const string& msg );
 	
+	/**
+	* @brief Receives binary data.
+	* Switches into data receive mode, untile specified number of bytes is received.
+	* @param size number of bytes to receive
+	*/
+	void recvData( uint64_t size );
+	
 	
 	/**
-	 * @brief Called on incoming binary data
-	 * @param buffer buffer containing the data
-	 * @param size numer of bytes recived
+	 * @brief Starts receiving binary data
+	 * Actually starts transfer.
 	 */
-	virtual void onIncomingData( vector<char>& buffer );
+	void startReceiving();
+	
+	/**
+	* @brief Changes state
+	* Notifies manager
+	* @param state new state.
+	*/
+	virtual void setState( State state );
+	
+	/// Handler used by startReceiving().
+	void onDataReceived( const system::error_code& err, int size );
 	
 	// command handlers
 	void commandMyNick( const list<string>& params );
@@ -119,6 +149,9 @@ private:
 	
 	// state
 	
+	/// Parent manager
+	DirectConnectionManager* _pManager;
+	
 	uint64_t  _fileLength;        ///< Downloaded file length
 	uint64_t  _receivedBytes;     ///< Bytes received so far
 	uint64_t  _currentFileOffset; ///< Offset from which data are currently received
@@ -126,6 +159,21 @@ private:
 	string    _nick;              ///< Remote user's nick
 	Direction _direction;         ///< Direction requested by peer
 	set<string> _features;        ///< Remote client capabilities (as announced by $Support)
+	
+	vector<char> _dataBuffer;     ///< Buffer for incoming data
+	
+	// transfer limit and speed
+	
+	int    _transferPool;         ///< Number of bytes the connection is allowed to receive
+	bool   _transferLimited;      ///< If transfer is limited
+	double _currentTransferSpeed; ///< Current transfer speed
+	
+	/// Total download time
+	posix_time::time_duration _downloadTime;
+	
+	/// Temporary used to measure transfer speed
+	posix_time::ptime _transferStart;
+	
 	
 	/// Handler called when data comes in
 	IncomingDataHandler _onIncomingData;

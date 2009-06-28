@@ -18,6 +18,8 @@ set(
 	clientthreadhub.cpp
 	filelistwidget.cpp
 	utils.cpp
+	tabcontent.cpp
+	tabwidget.cpp
 )
 
 kde4_add_ui_files(
@@ -43,10 +45,10 @@ target_link_libraries(
 	
 	rufusdc
 	${KDE4_KDEUI_LIBS}
-	boost_system
-	boost_thread
-	boost_regex
-	boost_signals
+	boost_filesystem-mt
+	boost_thread-mt
+	boost_regex-mt
+	boost_signals-mt
 	)
 
 

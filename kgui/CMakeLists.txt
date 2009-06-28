@@ -30,7 +30,7 @@ kde4_add_ui_files(
 	connectdialog.ui
 )
 
-include_directories( ${KDE4_INCLUDES} ${RUFUSDC_SOURCE_DIR} )
+include_directories( ${KDE4_INCLUDES} ${RUFUSDC_SOURCE_DIR}  ${RUFUSDC_BINARY_DIR}/kgui )
 link_directories( ${RUFUSDC_BINARY_DIR}/rufusdc )
 
 add_definitions( -DQT_NO_KEYWORDS )

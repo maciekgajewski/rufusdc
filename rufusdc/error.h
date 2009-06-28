@@ -13,23 +13,47 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-#include "download.h"
+#ifndef RUFUSDCERROR_H
+#define RUFUSDCERROR_H
+
+#include <string>
 
 namespace RufusDc
 {
 
-// ============================================================================
-// Consrtructor
-Download::Download()
+using namespace std;
+
+/**
+* Simple class containing operation status (success|failure) and messahe
+* @author Maciek Gajewski <maciej.gajewski0@gmail.com>
+*/
+class Error
 {
-	_state = Idle;
+
+public:
+	
+	/// Creates "no error" error
+	Error(){}
+	
+	/// Creates error
+	Error( const string& msg ): _msg(msg) {}
+	
+	/// Checks if operation failed
+	operator bool() const { return ! _msg.empty(); }
+	
+	/// Returns error message
+	string msg() const { return _msg; }
+
+private:
+
+	string _msg; ///< Error message
+
+};
+
 }
 
-// ============================================================================
-// Destructor
-Download::~Download()
-{
-}
+#endif // RUFUSDCERROR_H
+
+// EOF
 
 
-}

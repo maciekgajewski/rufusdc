@@ -51,7 +51,7 @@ public:
 	 * @param addr hub address
 	 * @return created Hub wrapper.
 	 */
-	Hub* createHub( const QString addr );
+	Hub* createHub( const QString& addr );
 	
 	/// Connects hub
 	void connectHub( const QString& addr );
@@ -61,6 +61,15 @@ public:
 	
 	/// Returns pointer to client worker thread
 	ClientThread& clientThread() { return _thread; }
+	
+	/// Requests file download
+	void downloadFile
+		( const QByteArray& hub
+		, const QByteArray& nick
+		, const QByteArray& path
+		, const QByteArray& tth
+		, quint64 size
+		);
 
 public Q_SLOTS:
 	/**
@@ -83,12 +92,21 @@ Q_SIGNALS:
 	/// Emitted when new fiel lsit received
 	void signalFileListReceived( const boost::shared_ptr<RufusDc::FileList>& pFileList );
 
-	// cross-threads signals
+	// cross-threads signals, sent to client thread
 
-	void signalConnectHub( const QString& addr );
-	void signalDisconnectHub( const QString& addr );
 	void startThread();
 	void stopThread();
+	
+	void signalConnectHub( const QString& addr );
+	void signalDisconnectHub( const QString& addr );
+	
+	void signalDownloadFile
+		( const QByteArray& hub
+		, const QByteArray& nick
+		, const QByteArray& path
+		, const QByteArray& tth
+		, quint64 size
+		);
 
 private Q_SLOTS:
 

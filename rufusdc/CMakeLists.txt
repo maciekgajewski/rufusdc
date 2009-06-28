@@ -20,6 +20,10 @@ set(
 	filedownload.cpp
 	filelistdownload.cpp
 	error.cpp
+	downloadmap.cpp
+	directconnectionmanager.cpp
+	hubmanager.cpp
+	downloadmanager.cpp
 )
 
 
@@ -29,10 +33,10 @@ add_library( rufusdc ${SOURCES} )
 target_link_libraries(
 	rufusdc
 	
-	boost_system
-	boost_thread
-	boost_regex
-	boost_signals
+	boost_filesystem-mt
+	boost_thread-mt
+	boost_regex-mt
+	boost_signals-mt
 	
 	bz2
 )

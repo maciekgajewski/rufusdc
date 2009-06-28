@@ -35,10 +35,14 @@ namespace RufusDc
 */
 class Hub : public Connection
 {
-	friend class Client;
+	friend class HubManager;
 
 public:
 
+	/// Shared ptr type
+	typedef boost::shared_ptr< Hub > ptr;
+
+	/// Destructor
 	virtual ~Hub();
 	
 	/**
@@ -55,8 +59,8 @@ public:
 	boost::signal< void (const UserInfo&) > signalUserModified; ///< User modified on user list
 	boost::signal< void (const string&) >   signalUserRemoved;  ///< User remved from user list
 	
-	boost::signal< void (const string&) > signalNameChnged;     ///< Hub name changed
-	boost::signal< void (const string&) > signalTopicChnged;    ///< Hub topic changed
+	boost::signal< void (const string&) > signalNameChanged;    ///< Hub name changed
+	boost::signal< void (const string&) > signalTopicChanged;   ///< Hub topic changed
 	
 	// state
 	
@@ -101,15 +105,20 @@ public:
 	* @return \b true if connected
 	*/
 	bool hasUser( const string& nick ) const;
+	
+	/**
+	* @brief Sends chat message
+	* @param msg message
+	*/
+	void sendChatMessage( const string& msg );
 
 private:
 	
 	/**
 	* @brief Creates hub connection, using specified io service for comunication.
-	* @param pClient parent
 	* @param address hub's adress
 	*/
-	Hub( Client* pClient, const string& address );
+	Hub( const string& address );
 	
 	/**
 	* @brief Sends MyINFO message to hub
@@ -158,6 +167,9 @@ private:
 	void commandUserIP( const list<string>& params );
 	void commandSupports( const list<string>& params );
 	void commandConnectToMe( const list<string>& params );
+	void commandSearch( const list<string>& params );
+	void commandUserCommand( const list<string>& params );
+	void commandOpList( const list<string>& params );
 };
 
 }

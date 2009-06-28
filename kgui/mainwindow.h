@@ -28,13 +28,13 @@
 // KDE
 #include <KMainWindow>
 
-class KTabWidget;
 
 namespace KRufusDc
 {
 
 	class ConnectDialog;
 	class Client;
+	class TabWidget;
 
 /**
 * @brief Apps main window
@@ -81,7 +81,7 @@ private:
 	
 	// widgets
 	
-	KTabWidget* _pTabs;
+	TabWidget* _pTabs;
 	
 	
 };

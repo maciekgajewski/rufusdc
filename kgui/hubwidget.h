@@ -17,11 +17,11 @@
 #define KRUFUSDCHUBWIDGET_H
 
 // Qt
-#include <QWidget>
 #include <QTimer>
 class QAction;
 
 // local
+#include "tabcontent.h"
 #include "usermodel.h"
 #include "ui_hubwidget.h"
 
@@ -35,7 +35,7 @@ class Hub;
 * The widget displays data in two panels: chat messages in left panel, and user list in right panel.
 * @author Maciek Gajewski <maciej.gajewski0@gmail.com>
 */
-class HubWidget : public QWidget, private Ui::HubWidget // with all due respect to Marc Mutz
+class HubWidget : public TabContent, private Ui::HubWidget // with all due respect to Marc Mutz
 {
 	Q_OBJECT
 
@@ -56,6 +56,12 @@ private Q_SLOTS:
 	/// Pos up context menu on users lists
 	void usersContextMenu( const QPoint & pos );
 	
+	/// Updates tab title to reflect all available information
+	void updateTitle();
+	
+	/// Returns pressed in chat line
+	void chatReturnPressed();
+	
 private:
 	
 	Hub*       _pHub;      ///< Hub wrapper
@@ -66,9 +72,18 @@ private:
 	
 	QAction* _pActionFileList;
 	
+	// colors
+	QColor   _systemMessageColor;
+	QColor   _userNickColor;
+	
 	/// Request file list from user
 	void requestFileList( const QString& nick );
-
+	
+	/// Generates color mathcing current pallette
+	void generateColors();
+	
+	/// Fromats incoming message, inserting html tags
+	QString formatMessage( const QString& msg );
 };
 
 }

@@ -29,11 +29,9 @@ namespace RufusDc
 
 // ============================================================================
 // Constructor
-Connection::Connection( Client* pClient, const string& address )
-	: _pParent( pClient )
-	, _address( address )
+Connection::Connection( const string& address )
+	: _address( address )
 {
-	assert( pClient );
 	_state = Disconnected;
 	_dataTransfer = false;
 }
@@ -74,7 +72,7 @@ void Connection::connect()
 			
 			
 	}
-	catch( const exception& e )
+	catch( const std::exception& e )
 	{
 		systemMessage( str(format("Error conecting to %1%: %2%") % _address % e.what() ) );
 	}
@@ -85,6 +83,7 @@ void Connection::connect()
 void Connection::disconnect()
 {
 	systemMessage( "Disconnecting" );
+	cerr << "Connection disconnected" << endl;
 	
 	_pSocket.reset(); // this will remove and close socket
 	setState( Disconnected );
@@ -104,7 +103,7 @@ void Connection::setState( State state )
 // IO Service
 io_service& Connection::ioService()
 {
-	return _pParent->ioService();
+	return Client::ref().ioService();
 }
 
 // ============================================================================
@@ -166,8 +165,7 @@ void Connection::onResolve( const system::error_code& err, tcp::resolver::iterat
 // On connect
 void Connection::onConnect( const system::error_code& err )
 {
-	assert( _pSocket );
-	if ( ! err )
+	if ( ! err && _pSocket ) // pSocket may be destroyed by disconect in the meantime
 	{
 		// start receiving messages here
 		recvCommand();
@@ -197,7 +195,8 @@ void Connection::send( const string& msg )
 		throw invalid_argument("not connected");
 	}
 	
-	ostream s( &_outBuffer );
+	shared_ptr<asio::streambuf> pBuf( new asio::streambuf );
+	ostream s( pBuf.get() );
 	s << msg;
 	s << '|'; // endline
 	
@@ -206,11 +205,12 @@ void Connection::send( const string& msg )
 	
 	async_write
 		( *_pSocket
-		, _outBuffer
+		, *pBuf
 		, boost::bind
 			( &Connection::onSend
 			, this
 			, placeholders::error
+			, pBuf
 			)
 		);
 }
@@ -232,9 +232,14 @@ void Connection::sendCommand( const string& cmd, const list<string>& params )
 
 // ============================================================================
 // On Send
-void Connection::onSend( const system::error_code& err )
+void Connection::onSend( const system::error_code& err, shared_ptr<asio::streambuf> pBuf  )
 {
-	// TODO
+	pBuf.reset(); // release buffer
+	if ( err )
+	{
+		cerr << "error sending: " << err.message() << endl;
+		disconnect();
+	}
 }
 
 // ============================================================================
@@ -303,8 +308,8 @@ void Connection::onIncomingCommand( const string& command, const list<string>& p
 	if ( hit == _handlers.end() )
 	{
 		// TODO error
-		/*
 		cerr << "Unsupported command "<< command << endl;
+		/*
 		BOOST_FOREACH( string p, params )
 		{
 			cerr << " * " << p << endl;
@@ -402,44 +407,12 @@ void Connection::recvCommand()
 	_dataTransfer = false;
 }
 
-// ============================================================================
-// Recv
-void Connection::recvData( uint64_t size )
-{
-	// TODO do something if data still in buffer
-	if ( _inBuffer.size() > 0 )
-	{
-		cerr << "WARNING: recvData: " << _inBuffer.size() << " bytes still in buffer" << endl;
-	}
-	
-	asio::async_read
-		( *_pSocket
-		, _inBuffer
-		, boost::bind
-			( &Connection::recvEnoughData
-			, this
-			, size
-			, asio::placeholders::error
-			, placeholders::bytes_transferred
-			)
-		, boost::bind
-			( &Connection::onRecvData
-			, this
-			, asio::placeholders::error
-			, placeholders::bytes_transferred
-			)
-		);
-	
-	_dataTransfer = true;
-}
 
 // ============================================================================
 // on recv
 void Connection::onRecvCommand( const system::error_code& err, int size )
 {
-	assert( _pSocket );
-	
-	if ( ! err )
+	if ( ! err && _pSocket )
 	{
 		int data_in_buffer = _inBuffer.size();
 		
@@ -478,50 +451,11 @@ void Connection::onRecvCommand( const system::error_code& err, int size )
 	{
 		// error!
 		cerr << "onRecvCommand error: " << err.message() << endl;
-		disconnect();
-	}
-}
-
-// ============================================================================
-// On recv data
-void Connection::onRecvData( const system::error_code& err, int size )
-{
-	if ( ! err )
-	{
-		//cerr << "Connection: " << size << " bytes received" << endl;
-		
-		vector<char> data( size );
-		_inBuffer.sgetn( data.data(), size );
-		_inBuffer.consume( size );
-		
-		
-		onIncomingData( data );
-		
-		if ( _state != Disconnected )
+		if ( err.value() != error::operation_aborted && _pSocket ) // that means tah the operatio ncomes form another life
 		{
-			recvCommand(); // tet back to receiving commands
+			disconnect();
 		}
 	}
-	else
-	{
-		// error!
-		cerr << "onRecvData, read error:" << err.message() << endl;
-		disconnect();
-	}
-}
-
-// ============================================================================
-// On incoming data
-void Connection::onIncomingData( vector<char>& buffer )
-{
-	// reimplement
-}
-
-// ============================================================================
-// Completion condition
-bool Connection::recvEnoughData( uint64_t requested, const system::error_code& err, int size )
-{
-	return err || size >= requested;
 }
 
 }

@@ -19,6 +19,7 @@
 // rufusdc
 #include "rufusdc/client.h"
 #include "rufusdc/filelist.h"
+#include "rufusdc/hubmanager.h"
 
 // Qt
 #include <QTimer>
@@ -68,6 +69,14 @@ void Client::start()
 	connect( this, SIGNAL(signalConnectHub(QString)), &_thread, SLOT(slotConnectHub(QString)) );
 	connect( this, SIGNAL(signalDisconnectHub(QString)), &_thread, SLOT(slotDisconnectHub(QString)) );
 	
+	
+	connect
+		( this 
+		, SIGNAL(signalDownloadFile(QByteArray,QByteArray,QByteArray,QByteArray,quint64))
+		, &_thread
+		, SLOT(slotDownloadFile(QByteArray,QByteArray,QByteArray,QByteArray,quint64))
+		);
+	
 	// client -> ui
 	connect( &_thread, SIGNAL( signalFileListReceived() ), SLOT( fileListReceived() ) );
 	
@@ -76,11 +85,9 @@ void Client::start()
 
 // ============================================================================
 // Create hub
-Hub* Client::createHub( const QString addr )
+Hub* Client::createHub( const QString& addr )
 {
-	shared_ptr<RufusDc::Hub> pRDCHub = _thread.client().getHub( qPrintable( addr ) );
-	
-	Hub* pHub = new Hub( pRDCHub, this );
+	Hub* pHub = new Hub( addr, this );
 	
 	return pHub;
 }
@@ -122,6 +129,19 @@ void Client::fileListReceived()
 	{
 		qWarning("Client thread announced new file list, but no list present!");
 	}
+}
+
+// ============================================================================
+// Downloads file
+void Client::downloadFile
+		( const QByteArray& hub
+		, const QByteArray& nick
+		, const QByteArray& path
+		, const QByteArray& tth
+		, quint64 size
+		)
+{
+	Q_EMIT signalDownloadFile( hub, nick, path, tth, size );
 }
 
 }

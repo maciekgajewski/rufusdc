@@ -69,18 +69,29 @@ public:
 	/// Parent Client
 	Client* parent() const { return _pParent; }
 	
-	/// Hub implementation
-	// TODO remove if not needed
-	//shared_ptr<RufusDc::Hub>& hub() { return _pHub; }
-	
-	// TODO I don't like it. IT shopuld be hidden
+	// TODO I don't like it. IT should be hidden
 	ClientThreadHub* anchor() const  { return _thread; }
+	
+	/// Returns hub address
+	QString address() const { return _address; }
+	
+	/// Return hub name
+	QString name() const { return _name; }
+	
+	/// Returns hub topic
+	QString topic() const { return _topic; }
 	
 	/**
 	 * @brief Requestst file list for user.
 	 * @param nick user's nick
 	 */
 	void requestFileList( const QString& nick );
+	
+	/**
+	 * @brief Sends chat message to hub.
+	 * @param msg message text, w/o any header.
+	 */
+	void sendChatMessage( const QString& msg );
 
 Q_SIGNALS:
 
@@ -89,28 +100,43 @@ Q_SIGNALS:
 	/// Emitted when there is new chat message incoming
 	void hubMessage( int type, const QString& msg );
 	
+	/// Emitted when hub name changes
+	void hubNameChanged( const QString& name );
+	
+	/// Emitted when hub topic changes
+	void hubTopicChanged( const QString& topic );
+	
 	// signals sent to anchor
 	
 	void wtRequestFileList( const QString& nick );
+	
+	void wtSendChatMessage( const QString& msg );
 
 private Q_SLOTS:
 
+	// x-thread slots, connected to anchor
+	
 	void wtMessage( int type, const QString& msg );
+	
+	void wtNameChanged( const QString& name );
+	void wtTopicChanged( const QString& topic );
 
 private:
 
 	/// Private constructor. Use Client to obtain instance.
-	Hub( const shared_ptr<RufusDc::Hub>& pHub, Client *parent );
-	
-	/// Underlying RufusDc::Hub object
-	// TODO remove if not needed
-	//shared_ptr<RufusDc::Hub> _pHub;
+	Hub( const QString& addr, Client *parent );
 	
 	/// Parent
 	Client* _pParent;
 	
 	/// Cached hub address
 	QString _address;
+	
+	/// Cached hub name, as sent by hub
+	QString _name;
+	
+	/// Cached hub topic
+	QString _topic;
 	
 	ClientThreadHub* _thread; ///< Sub-object living in worker thread
 };

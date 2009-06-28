@@ -28,6 +28,9 @@
 // local
 #include "listener.h"
 #include "error.h"
+#include "directconnectionmanager.h"
+#include "singleton.h"
+#include "hubmanager.h"
 
 namespace RufusDc
 {
@@ -48,9 +51,12 @@ class DirectConnection;
 * update status of asynchronous operations.
 * @author Maciek Gajewski <maciej.gajewski0@gmail.com>
 */
-class Client
+class Client : public Singleton< Client >
 {
 public:
+
+	/// shared pointer type
+	typedef boost::shared_ptr< Client > ptr;
 
 	/// Client settings. Required for client operation
 	struct Settings
@@ -83,13 +89,6 @@ public:
 	void run();
 	
 	/**
-	* @brief Returns hub with specified address
-	* @param hubAddr hub address
-	* @return Pointer to hub object
-	*/
-	shared_ptr<Hub> getHub( const string& addr );
-	
-	/**
 	* @brief Sets client settings.
 	* @param settings new settings
 	*/
@@ -108,67 +107,6 @@ public:
 	io_service& ioService() { return _service; }
 	
 	
-	/**
-	 * @brief Requersts direct connection to another user.
-	 * This method can yield three kinds of results:
-	 *  - connection is successfull, handler is colled with connnection pointer
-	 *  - connection couldn't be created, handler is called with error code
-	 *  - hub is not connected or there is no such user - exception is thrown
-	 * @param hub  hub to which owner of file is connected
-	 * @param nick user's nick
-	 * @param handler handler colled after connection
-	 * @exception std::logic_error when hub is not connected, or there is no such user.
-	 */
-	void requestConnection
-		( const string& hub
-		, const string& nick
-		, const ConnectionHandler& handler
-		);
-	
-	/**
-	 * @brief Starts file download
-	 * Creates file download manager and places it in download list.
-	 * @param hub  hub to which owner of file is connected
-	 * @param nick user's nick
-	 * @param path file path
-	 * @param tth  file hash
-	 * @param size expected file size
-	 */
-	void downloadFile
-		( const string& hub
-		, const string& nick
-		, const string& path
-		, const string& tth
-		, uint64_t size
-		);
-	
-	/**
-	 * @brief Starts file list download
-	 * Creates file list download manager and places it in download list.
-	 * @param hub  hub to which user is connected
-	 * @param nick user's nick
-	 */
-	void downloadFileList( const string& hub, const string& nick );
-	
-	
-	/**
-	 * @brief Called by FileListDownload
-	 * States that file list was succesfully downloaded
-	 * @param pList received file list
-	 * @internal
-	 */
-	void fileListReceived( const shared_ptr<FileList>& pList );
-	
-	// signals
-	
-	/// New system message from hub. TODO unused ?
-	boost::signal< void ( Hub*, const string&) > signalSystemMessage;
-	/// New chat message from hub. TODO unused ?
-	boost::signal< void ( Hub*, const string&) > signalChatMessage;
-	
-	/// File list received
-	boost::signal< void (const shared_ptr<FileList>&) > signalIncomingFileList;
-	
 private:
 
 	/// IO service used to network communication
@@ -177,12 +115,6 @@ private:
 	/// listening TCP socket
 	// TODO acceptor here
 
-	/// Map of hubs, by address
-	typedef map< string, shared_ptr<Hub> > HubMap;
-	
-	/// list of hubs to which the client is connected
-	HubMap _hubs;
-	
 	/// Mutex guarding _hubs
 	boost::mutex _hubsMutex;
 	
@@ -192,11 +124,11 @@ private:
 	/// TCP Listener
 	Listener _tcpListener;
 	
-	/// Downloads list
-	list< shared_ptr<Download> > _downloads;
+	/// Connection manager
+	DirectConnectionManager _connectionManager;
 	
-	/// Mutex guarding downloads
-	boost::mutex _downloadsMutex;
+	/// Hub manager
+	HubManager _hubManager;
 	
 	/// Receives all hubs chat messages
 	void onHubChatMessage( Hub* pHub, const string& msg );

@@ -95,25 +95,21 @@ protected:
 	
 	/**
 	* @brief Creates hub connection
-	* @param pClient parent - Client instance.
 	* @param address adress
 	*/
-	Connection( Client* pClient, const string& address );
+	Connection( const string& address );
 	
 	// state variables
 	
 	State  _state;      ///< Connection state
 	
 	/**
-		* @brief Changes state
-		* This emits signalStateChanged
-		* @param state new state.
-		*/
-	void setState( State state );
+	* @brief Changes state
+	* This emits signalStateChanged
+	* @param state new state.
+	*/
+	virtual void setState( State state );
 
-	/// Parent object
-	Client* _pParent;
-	
 	/// Hub's address. Never changes
 	string _address;
 	
@@ -129,9 +125,6 @@ protected:
 	/// Intermediate buffer, used to assemble command (async_read_until sucks!)
 	string _command;
 
-	/// Buffer for outgoing message
-	asio::streambuf _outBuffer;
-	
 	/**
 	* @brief Called when message is received.
 	* Recognizes message, and calls onIcomingCommand or onIncomingChat. 
@@ -153,29 +146,15 @@ protected:
 	virtual void onIncomingChat( const string& msg ) = 0;
 	
 	/**
-	 * @brief Called on incoming binary data
-	 * @param buffer buffer containing the data
-	 * @param size numer of bytes recived
-	 */
-	virtual void onIncomingData( vector<char>& buffer );
-	
-	/**
 	* @brief Receives messages.
 	* Starts asynchronous operation, which calls onRecvCommand upon completion.
 	*/
 	void recvCommand();
 	
 	/**
-	* @brief Receives binary data.
-	* Starts asynchronous operation, which calls onRecvData upon completion.
-	* @param size numebnr of bytes to receive
+	* @brief Returns io_service
+	* @return io_servide used to communicate
 	*/
-	void recvData( uint64_t size );
-	
-	/**
-		* @brief Returns io_service
-		* @return io_servide used to commubicate
-		*/
 	io_service& ioService();
 	
 	/// Parses address into tcp query
@@ -228,8 +207,9 @@ protected:
 	/**
 	* @brief Handles result of 'send' operation.
 	* @param err status
+	* @param pBuf buffer with sent data
 	*/
-	void onSend( const system::error_code& err );
+	void onSend( const system::error_code& err, shared_ptr<asio::streambuf> pBuf );
 
 	/**
 	* @brief Handles result of 'recvCommand' operation.
@@ -237,22 +217,6 @@ protected:
 	* @param size bytes received
 	*/
 	void onRecvCommand( const system::error_code& err, int size );
-	
-	/**
-	* @brief Handles result of 'recvData' operation.
-	* @param err status
-	* @param size bytes received
-	*/
-	void onRecvData( const system::error_code& err, int size );
-	
-	/**
-	* @brief Completion condition for binary transfer
-	* Returns \b true when size reaches _requestedBytes
-	* @param err status
-	* @param size bytes received
-	* @return \b true when requested number of bytes is reached, or when erro occurs.
-	*/
-	bool recvEnoughData( uint64_t requested, const system::error_code& err, int size );
 	
 	// command handlers
 	

@@ -47,11 +47,8 @@ FileList::~FileList()
 // From bz2 data stream
 void FileList::fromBz2Data( vector<char>& data )
 {
-	const int shift = 7; // first 7 bytes should be dropped. why?
-	
-
-	unsigned int inSize = data.size() - shift;
-	char* inBuf = data.data() + shift;
+	unsigned int inSize = data.size();
+	char* inBuf = data.data();
 	
 	unsigned int outSize = inSize * 10; // rough estimate
 	

@@ -22,6 +22,9 @@
 // Qt
 #include <QTextCodec>
 
+// rufusdc
+#include "rufusdc/hubmanager.h"
+
 // local
 #include "hub.h"
 #include "client.h"
@@ -33,16 +36,32 @@ namespace KRufusDc
 
 // ============================================================================
 // Thread anchor constructor
-ClientThreadHub::ClientThreadHub( Client* pParent, const shared_ptr<RufusDc::Hub>& pHub, QObject* qparent )
+ClientThreadHub::ClientThreadHub( Client* pParent, const QString& addr, QObject* qparent )
 	: QObject(qparent)
 	, _pCodec(0)
 	, _pParent( pParent )
-	, _pHub( pHub )
+	, _address( addr )
 {
 	Q_ASSERT( pParent );
 
 	// connect to client's thread
 	ClientThread& thread = _pParent->clientThread();
+}
+
+
+// ============================================================================
+// Destructor
+ClientThreadHub::~ClientThreadHub()
+{
+}
+
+// ============================================================================
+// Start
+void ClientThreadHub::start()
+{
+	_pHub = RufusDc::HubManager::ref().getHub( qPrintable( _address ) );
+	
+	Q_ASSERT( _pHub );
 	
 	// connect the object with actual hub implementation
 	_pHub->signalChatMessage.connect( boost::bind( &ClientThreadHub::wtMessage, this, Hub::Chat, _1 ) );
@@ -51,13 +70,9 @@ ClientThreadHub::ClientThreadHub( Client* pParent, const shared_ptr<RufusDc::Hub
 	_pHub->signalUserAdded.connect( boost::bind( &ClientThreadHub::wtUserAdded, this, _1 ) );
 	_pHub->signalUserModified.connect( boost::bind( &ClientThreadHub::wtUserModified, this, _1 ) );
 	_pHub->signalUserRemoved.connect( boost::bind( &ClientThreadHub::wtUserRemoved, this, _1 ) );
-}
-
-
-// ============================================================================
-// Destructor
-ClientThreadHub::~ClientThreadHub()
-{
+	
+	_pHub->signalNameChanged.connect( boost::bind( &ClientThreadHub::wtHubNameChanged, this, _1 ) );
+	_pHub->signalTopicChanged.connect( boost::bind( &ClientThreadHub::wtHubTopicChanged, this, _1 ) );
 }
 
 // ============================================================================
@@ -228,10 +243,46 @@ QList<UserInfo> ClientThreadHub::getUsers()
 // Requests file list
 void ClientThreadHub::utRequestFileList( const QString& nick )
 {
-	
 	QByteArray rawNick = _pCodec ? _pCodec->fromUnicode( nick ) : nick.toLocal8Bit();
 	
 	_pHub->requestFileList( rawNick.data() );
+}
+
+// ============================================================================
+// Send chat message
+void ClientThreadHub::utSendChatMessage( const QString& msg )
+{
+	QByteArray rawMsg = _pCodec ? _pCodec->fromUnicode( msg ) : msg.toLocal8Bit();
+	
+	_pHub->sendChatMessage( rawMsg.data() );
+}
+
+// ============================================================================
+// Name changed
+void ClientThreadHub::wtHubNameChanged( const std::string& name )
+{
+	if ( _pCodec )
+	{
+		Q_EMIT signalWtNameChanged( _pCodec->toUnicode( name.c_str() ) );
+	}
+	else
+	{
+		Q_EMIT signalWtNameChanged( name.c_str() );
+	}
+}
+
+// ============================================================================
+// Topic changed
+void ClientThreadHub::wtHubTopicChanged( const std::string& topic )
+{
+	if ( _pCodec )
+	{
+		Q_EMIT signalWtTopicChanged( _pCodec->toUnicode( topic.c_str() ) );
+	}
+	else
+	{
+		Q_EMIT signalWtTopicChanged( topic.c_str() );
+	}
 }
 
 }

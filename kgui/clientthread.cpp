@@ -24,6 +24,8 @@
 // rufusdc
 #include "rufusdc/client.h"
 #include "rufusdc/hub.h"
+#include "rufusdc/hubmanager.h"
+#include "rufusdc/downloadmanager.h"
 
 // Qt
 #include <QTimer>
@@ -46,7 +48,7 @@ ClientThread::ClientThread( QObject *parent )
 	_pTimer = NULL;
 	_stopped = false;
 	
-	_pClient->signalIncomingFileList.connect
+	RufusDc::DownloadManager::ref().signalIncomingFileList.connect
 		( boost::bind( &ClientThread::onFileListReceived, this, _1 )
 		);
 }
@@ -85,7 +87,7 @@ void ClientThread::runClient()
 				qDebug("ClientThread: Escaping the endless loop");
 				break;
 			}
-			msleep(1000); // this parameter should be tuned
+			msleep(100); // this parameter should be tuned
 		}
 		qDebug("ClientThread: Escaped");
 	}
@@ -126,7 +128,7 @@ void ClientThread::slotConnectHub( const QString& addr )
 {
 	//qDebug("slotConnectHub, tid: %u", int(QThread::currentThreadId()) );
 
-	boost::shared_ptr<RufusDc::Hub> pHub = _pClient->getHub( qPrintable( addr ) );
+	boost::shared_ptr<RufusDc::Hub> pHub = RufusDc::HubManager::ref().getHub( qPrintable( addr ) );
 	pHub->connect();
 }
 
@@ -134,7 +136,7 @@ void ClientThread::slotConnectHub( const QString& addr )
 // disconnect hub
 void ClientThread::slotDisconnectHub( const QString& addr )
 {
-	boost::shared_ptr<RufusDc::Hub> pHub = _pClient->getHub( qPrintable( addr ) );
+	boost::shared_ptr<RufusDc::Hub> pHub = RufusDc::HubManager::ref().getHub( qPrintable( addr ) );
 	pHub->disconnect();
 }
 
@@ -158,6 +160,19 @@ void ClientThread::takeFileList( boost::shared_ptr<RufusDc::FileList>& pOut )
 	{
 		pOut = _fileLists.takeFirst();
 	}
+}
+
+// ============================================================================
+// Download file
+void ClientThread::slotDownloadFile
+	( const QByteArray& hub
+	, const QByteArray& nick
+	, const QByteArray& path
+	, const QByteArray& tth
+	, quint64 size )
+{
+	// TODO do something about encoding
+	RufusDc::DownloadManager::ref().downloadFile( (const char*)hub, (const char*)nick, (const char*)path, (const char*)tth, size );
 }
 
 } // namespace

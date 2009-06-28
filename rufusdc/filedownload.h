@@ -18,16 +18,24 @@
 
 // stl
 #include <fstream>
+#include <list>
+
+// boost
+#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <boost/shared_ptr.hpp>
 
 // local
+#include "downloadmap.h"
 #include "download.h"
+#include "directconnection.h"
+#include "hub.h"
 
 namespace RufusDc
 {
 
 using namespace std;
 
-class Hub;
+class Error;
 
 /**
 * File download
@@ -35,9 +43,13 @@ class Hub;
 */
 class FileDownload : public Download
 {
-	friend class Client;
+	friend class DownloadManager;
 public:
 	
+	/// pointer type
+	typedef boost::shared_ptr<FileDownload> ptr;
+
+	/// Destructor
 	virtual ~FileDownload();
 
 	/**
@@ -65,11 +77,45 @@ public:
 	uint64_t size() const{ return _size; }
 	
 private:
-	FileDownload( Client* pParent );
+
+	/// Constructor
+	/// Accessibl;e only to manager
+	FileDownload();
+	
+	/// File source information
+	struct Source
+	{
+		typedef boost::shared_ptr< Source > ptr;
+		
+		string hub;
+		string nick;
+		string path;
+		
+		boost::posix_time::ptime successfullConnection;
+		DirectConnection::ptr pConnection;
+	};
 	
 	/// Initializes temporary file
 	void createTemporaryFile();
 	
+	/// Initializes temporary file with information
+	void createInfoFile();
+	
+	/// Dumps state into info file
+	void dumpInfo();
+	
+	/// Escapes string before writing into config file
+	string escape( const string& str );
+	
+	/// Attempts to connect to source
+	void connectToSource( const shared_ptr<Source>& pSrc );
+	
+	/// Finds what source shoudl download after connection
+	void findWhatToDownload( Source* pSrc, uint64_t& start, uint64_t& len );
+	
+	/// Complete download
+	void completeDownload();
+
 	/// Original file path
 	string _path;
 	
@@ -81,7 +127,7 @@ private:
 	
 	/// Source hub
 	///@todo need more of these for mutli-download
-	shared_ptr<Hub> _pHub;
+	Hub::ptr _pHub;
 	
 	/// Temporary file
 	fstream _tmpFile;
@@ -89,14 +135,30 @@ private:
 	/// Temporary file name
 	string _tmpFileName;
 	
+	/// Temporary file for download information name
+	string _infoFileName;
+	
 	// state
 	
 	/// Received bytes. Received is continous block begining at the start of the file
 	///@todo replece by chain of received regions.
 	uint64_t _receivedBytes; 
 
+	/// List of sources
+	list< Source::ptr > _sources;
+	
+	/// Download map
+	DownloadMap _map;
+	
+	/// Timer connecting periodically to sources
+	boost::asio::deadline_timer _timer;
+	
+
 	// slots
 	
+	void onConnected( const shared_ptr<Source>& pSrc, const Error& err, const shared_ptr<DirectConnection>& pConn );
+	void onDataIncoming( vector<char>& data, uint64_t offset );
+	void onDownloadCompleted( const shared_ptr<Source>& pSrc, const Error& err );
 };
 
 }

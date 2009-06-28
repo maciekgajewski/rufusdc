@@ -16,8 +16,12 @@
 #ifndef RUFUSDCFILELIST_H
 #define RUFUSDCFILELIST_H
 
+// std
 #include <string>
 #include <vector>
+
+// boost
+#include <boost/shared_ptr.hpp>
 
 namespace RufusDc
 {
@@ -34,7 +38,15 @@ class FileList
 {
 
 public:
+
+	/// shared ptr type
+	typedef boost::shared_ptr< FileList > ptr;
+	
+	
+	/// Constructor
 	FileList();
+	
+	/// Destructor
 	~FileList();
 	
 	/// Initilizes list form bz2-compressed data.
@@ -45,23 +57,25 @@ public:
 	/// Returns XML data
 	const string& xml() const { return _xml; }
 
+	/// Sets origin hub
 	void setHub( const string& value )
 	{
 		_hub = value;
 	}
 	
-
+	/// returns orign hub
 	string hub() const
 	{
 		return _hub;
 	}
 
+	/// set origin nick
 	void setNick( const string& value )
 	{
 		_nick = value;
 	}
 	
-
+	/// returns origin nick
 	string nick() const
 	{
 		return _nick;

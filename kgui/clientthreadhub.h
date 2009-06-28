@@ -28,6 +28,7 @@
 #include <QMap>
 #include <QSet>
 #include <QMutex>
+#include <QString>
 class QTextCodec;
 
 // local
@@ -50,7 +51,7 @@ class ClientThreadHub : public QObject
 
 public:
 	
-	ClientThreadHub( Client* _pParent, const shared_ptr<RufusDc::Hub>& pHub, QObject* qparent = 0 );
+	ClientThreadHub( Client* _pParent, const QString& addr, QObject* qparent = 0 );
 	
 	~ClientThreadHub();
 
@@ -78,23 +79,39 @@ public:
 	void wtUserModified( const RufusDc::UserInfo& info );
 	void wtUserRemoved( const std::string& nick );
 	
+	void wtHubNameChanged( const std::string& name );
+	void wtHubTopicChanged( const std::string& name );
+	
 Q_SIGNALS:
-	/// Boost slot - called from within worker thread
+	
+	// x-thread signals
+	
+	/// Hub message
 	void signalWtMessage( int type, const QString& msg );
+	
+	/// Hub topic changed
+	void signalWtTopicChanged( const QString& topic );
+	
+	/// Hub name changed
+	void signalWtNameChanged( const QString& name );
 
 public Q_SLOTS:
 
 	// slots from UI thread
 	
+	/// 'start' message. Starts processing in worker thread
+	void start();
+	
 	void utRequestFileList( const QString& nick );
+	
+	void utSendChatMessage( const QString& msg );
 
 private:
 
 	QTextCodec* _pCodec; ///< Text coded used to decode incoming messages
 	
-	// TODO remove if not nneded
-	//Hub* _pParent; ///< Parent
-	Client* _pParent;
+	Client* _pParent;    ///< Parent client object
+	QString _address;    ///< Hub addr
 	
 	/// Underlying RufusDc::Hub object
 	shared_ptr<RufusDc::Hub> _pHub;

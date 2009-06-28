@@ -19,8 +19,10 @@
       <enum>Qt::Horizontal</enum>
      </property>
      <widget class="KTextBrowser" name="pChat" >
-      <property name="lineWrapMode" >
-       <enum>QTextEdit::NoWrap</enum>
+      <property name="font" >
+       <font>
+        <pointsize>7</pointsize>
+       </font>
       </property>
      </widget>
      <widget class="QTreeView" name="pUsers" >
@@ -33,9 +35,17 @@
      </widget>
     </widget>
    </item>
+   <item>
+    <widget class="KLineEdit" name="pChatInput" />
+   </item>
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>KLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>klineedit.h</header>
+  </customwidget>
   <customwidget>
    <class>KTextBrowser</class>
    <extends>QTextBrowser</extends>

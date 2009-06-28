@@ -40,6 +40,7 @@ namespace KRufusDc
 using namespace boost;
 
 class Hub;
+class Client;
 
 /**
 * @brief Hub wrapper part operating in cleint's thread.

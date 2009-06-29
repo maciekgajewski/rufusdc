@@ -22,14 +22,7 @@
 #include <KMenu>
 #include <KIcon>
 
-// rufusdc
-#include "rufusdc/client.h"
-
 // local
-#include "hub.h"
-#include "clientthreadhub.h"
-#include "client.h"
-
 #include "hubwidget.h"
 
 
@@ -55,20 +48,19 @@ static const int USERLIST_UPDATE_INTERVAL = 5000; // how often user list should 
 
 // ============================================================================
 // Constructor
-HubWidget::HubWidget( Hub* pHub, QWidget* parent, Qt::WindowFlags f )
+HubWidget::HubWidget( QWidget* parent, Qt::WindowFlags f )
 	: TabContent( parent )
 	, Ui::HubWidget()
-	, _pHub( pHub )
 {
-	Q_ASSERT( pHub );
-	
 	setupUi( this );
 	
 	_userUpdateTimer.setInterval( USERLIST_UPDATE_INTERVAL );
 	
+	/*
 	connect( pHub, SIGNAL( hubMessage(int,QString)), SLOT( onHubMessage(int,QString) ) );
 	connect( pHub, SIGNAL( hubNameChanged(QString)), SLOT( updateTitle() ) );
 	connect( pHub, SIGNAL( hubTopicChanged(QString)), SLOT( updateTitle() ) );
+	*/
 	connect( & _userUpdateTimer, SIGNAL(timeout()), SLOT(updateUsers()) );
 	
 	connect( pUsers, SIGNAL(customContextMenuRequested(const QPoint &)), SLOT(usersContextMenu(const QPoint &) ) );
@@ -96,6 +88,7 @@ void HubWidget::updateTitle()
 	QString title;
 	
 	// do we have name?
+	/*
 	if ( _pHub->name().isEmpty() )
 	{
 		// no, use just title
@@ -113,7 +106,7 @@ void HubWidget::updateTitle()
 			title = QString("%1 (%2)").arg( _pHub->name(), _pHub->topic() );
 		}
 	}
-	
+	*/
 	setTabTitle( title );
 }
 
@@ -122,6 +115,7 @@ void HubWidget::updateTitle()
 void HubWidget::onHubMessage( int type, const QString& msg )
 {
 	//qDebug("msg: tid:%d type:%d %s", int(QThread::currentThreadId()), type, qPrintable( msg ) );
+	/*
 	if ( type == Hub::System )
 	{
 		pChat->append( QString("<span style=\"color:%1\">%2</span>").arg( _systemMessageColor.name(), msg ) );
@@ -131,6 +125,7 @@ void HubWidget::onHubMessage( int type, const QString& msg )
 		QString txt = formatMessage( msg );
 		pChat->append( txt );
 	}
+	*/
 }
 
 // ============================================================================
@@ -147,9 +142,11 @@ QString HubWidget::formatMessage( const QString& msg )
 	formatted.replace( QRegExp("^<([^>]*)>"), "<b>&lt;\\1&gt;</b>" );
 	
 	// 2 - make all user's nick occurences bold
+	/*
 	QString regex = QString("(%1)").arg( QRegExp::escape( _pHub->parent()->clientThread().client().settings().nick.c_str() ) );
 	QString replace = QString("<b><span style=\"color:%1\">\\1</span></b>").arg( _userNickColor.name() );
 	formatted.replace( QRegExp( regex ), replace );
+	*/
 	
 	// convert url's to actual links
 	formatted.replace( QRegExp( "(https?://[._A-Za-z0-9-/]+)" ), "<a href=\"\\1\">\\1</a>" );
@@ -161,6 +158,7 @@ QString HubWidget::formatMessage( const QString& msg )
 // Populate users
 void HubWidget::populateUsers()
 {
+	/*
 	QList<UserInfo> users = _pHub->anchor()->getUsers();
 	_userModel.populate( users );
 	
@@ -171,7 +169,7 @@ void HubWidget::populateUsers()
 	{
 		pUsers->resizeColumnToContents( i );
 	}
-	
+	*/
 	_userUpdateTimer.start();
 }
 
@@ -183,7 +181,7 @@ void HubWidget::updateUsers()
 	QMap< QString, UserInfo > modified;
 	QSet< QString>            removed;
 	
-	_pHub->anchor()->getChangedUsers( added, modified, removed );
+	//_pHub->anchor()->getChangedUsers( added, modified, removed );
 	int initialUserCount = _userModel.rowCount();
 	//qDebug("Updatng users: added: %d, removed: %d, modified: %d. users on list: %d", added.size(), removed.size(), modified.size(), _userModel.rowCount() );
 	
@@ -236,7 +234,7 @@ void HubWidget::usersContextMenu( const QPoint & pos )
 // Request file list
 void HubWidget::requestFileList( const QString& nick)
 {
-	_pHub->requestFileList( nick );
+	//_pHub->requestFileList( nick );
 }
 
 // ============================================================================
@@ -265,7 +263,7 @@ void HubWidget::chatReturnPressed()
 	QString text = pChatInput->text();
 	pChatInput->clear();
 	
-	_pHub->sendChatMessage( text );
+	//_pHub->sendChatMessage( text );
 }
 
 }

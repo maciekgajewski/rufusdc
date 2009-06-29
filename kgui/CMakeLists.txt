@@ -10,12 +10,8 @@ set(
 	mainwindow.cpp
 	hubwidget.cpp
 	connectdialog.cpp
-	client.cpp
-	clientthread.cpp
-	hub.cpp
 	usermodel.cpp
 	userinfo.cpp
-	clientthreadhub.cpp
 	filelistwidget.cpp
 	utils.cpp
 	tabcontent.cpp
@@ -31,7 +27,6 @@ kde4_add_ui_files(
 )
 
 include_directories( ${KDE4_INCLUDES} ${RUFUSDC_SOURCE_DIR}  ${RUFUSDC_BINARY_DIR}/kgui )
-link_directories( ${RUFUSDC_BINARY_DIR}/rufusdc )
 
 add_definitions( -DQT_NO_KEYWORDS )
 set( CMAKE_CXX_FLAGS -fexceptions ) # ugly and non-portable. I liked the qmake's way of doing this better
@@ -43,7 +38,7 @@ kde4_add_executable(kgui ${SOURCES})
 target_link_libraries(
 	kgui
 	
-	rufusdc
+	dcpp
 	${KDE4_KDEUI_LIBS}
 	boost_filesystem-mt
 	boost_thread-mt

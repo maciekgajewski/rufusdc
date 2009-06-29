@@ -24,7 +24,7 @@
 #include <QTimer>
 #include <QThreadPool>
 
-#include "client.h"
+// local
 #include "mainwindow.h"
 
 
@@ -45,19 +45,13 @@ int main(int argc, char** argv )
 	KCmdLineArgs::init( argc, argv, &aboutData );
 	
 	KApplication app;
-	KRufusDc::Client client; // client implementation
 
 	// stop thread from thread pool,
 	// TODO this is possible workaround
 	QThreadPool::globalInstance()->setMaxThreadCount( 0 );
 	
-	KRufusDc::MainWindow* pWin = new KRufusDc::MainWindow( &client );
+	KRufusDc::MainWindow* pWin = new KRufusDc::MainWindow();
 	pWin->show();
-
-	QTimer::singleShot( 0, &client, SLOT(start()) ); // start client from within event loop	
-
-	// intercept app quit event
-	QObject::connect( &app, SIGNAL(aboutToQuit()), &client, SLOT(stop()) );
 
 	try
 	{

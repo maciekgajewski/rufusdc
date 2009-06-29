@@ -19,9 +19,6 @@
 // boost
 #include <boost/shared_ptr.hpp>
 
-// rufusdc
-#include "rufusdc/filelist.h"
-
 // Qt
 #include <QPointer>
 
@@ -33,7 +30,6 @@ namespace KRufusDc
 {
 
 	class ConnectDialog;
-	class Client;
 	class TabWidget;
 
 /**
@@ -44,7 +40,7 @@ class MainWindow : public KMainWindow
 {
 	Q_OBJECT
 public:
-	MainWindow( Client* pClient, QWidget* pParent = NULL );
+	MainWindow( QWidget* pParent = NULL );
 	virtual ~MainWindow();
 	
 private Q_SLOTS:
@@ -60,11 +56,9 @@ private Q_SLOTS:
 	// messages from client
 	
 	/// File list was received
-	void fileListReceived( const boost::shared_ptr<RufusDc::FileList>& pFileList );
+	void fileListReceived( /*const boost::shared_ptr<RufusDc::FileList>& pFileList*/ );
 
 private:
-
-	Client* _pClient;   ///< DC client implementation;
 	
 	// initializers
 	

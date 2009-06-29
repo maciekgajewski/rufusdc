@@ -18,8 +18,6 @@
 #include <KAction>
 #include <KToolBar>
 
-#include "hub.h"
-#include "client.h"
 #include "connectdialog.h"
 #include "hubwidget.h"
 #include "filelistwidget.h"
@@ -32,23 +30,22 @@ namespace KRufusDc
 
 // ============================================================================
 // Constructor
-MainWindow::MainWindow( Client* pClient, QWidget* pParent )
+MainWindow::MainWindow( QWidget* pParent )
 		: KMainWindow(pParent)
-		, _pClient( pClient )
 {
-	Q_ASSERT( pClient);
-	
 	initActions();
 	initGui();
 	
-	resize( 800, 600 );
+	resize( 800, 600 ); // TODO what is this for?
 	
 	// connect to client
+	/*
 	connect
 		( pClient
 		, SIGNAL(signalFileListReceived( const boost::shared_ptr<RufusDc::FileList>& ))
 		, SLOT(fileListReceived( const boost::shared_ptr<RufusDc::FileList>&))
 		);
+	*/
 }
 
 // ============================================================================
@@ -88,13 +85,7 @@ void MainWindow::onActionConnect()
 // Connect to hub
 void MainWindow::connectToHub( const QString& str )
 {
-	Q_ASSERT( _pClient );
-	
-	Hub* pHub = _pClient->createHub( str );
-	HubWidget* pWidget = new HubWidget( pHub, this );
-	pHub->connect();
-	int index = _pTabs->addTab( pWidget );
-	_pTabs->setCurrentIndex( index );
+	// TODO
 }
 
 // ============================================================================
@@ -108,13 +99,15 @@ void MainWindow::initGui()
 
 // ============================================================================
 // file list received
-void MainWindow::fileListReceived( const boost::shared_ptr<RufusDc::FileList>& pFileList )
+void MainWindow::fileListReceived( /*const boost::shared_ptr<RufusDc::FileList>& pFileList*/ )
 {
+	/*
 	FileListWidget* pWidget = new FileListWidget( _pClient, this );
 	pWidget->setFileList( pFileList );
 	
 	int index = _pTabs->addTab( pWidget );
 	_pTabs->setCurrentIndex( index );
+	*/
 }
 
 }

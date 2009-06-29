@@ -16,8 +16,6 @@
 #ifndef KRUFUSDCUSERINFO_H
 #define KRUFUSDCUSERINFO_H
 
-#include "rufusdc/userinfo.h"
-
 class QTextCodec;
 
 namespace KRufusDc
@@ -34,14 +32,6 @@ public:
 	UserInfo();
 	~UserInfo();
 	
-	/**
-		* @brief Converts from RufusDc::UserInfo.
-		* Uses text codec to decode raw strings.
-		* @param info orginal info
-		* @param pCodec (optional) codec used to convert strings
-		*/
-	void convert( const RufusDc::UserInfo& info, QTextCodec* pCodec = NULL );
-
 	void setNick( const QString& value )
 	{
 		_nick = value;

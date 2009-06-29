@@ -17,9 +17,6 @@
 // std
 #include <stdexcept>
 
-// rufusdc
-#include "rufusdc/filelist.h"
-
 // qt
 #include <QDomDocument>
 #include <QContextMenuEvent>
@@ -35,7 +32,6 @@
 
 // local
 #include "utils.h"
-#include "client.h"
 #include "filelistwidget.h"
 
 namespace KRufusDc
@@ -43,12 +39,9 @@ namespace KRufusDc
 
 // ============================================================================
 // Constructor
-FileListWidget::FileListWidget( Client* pClient, QWidget* parent )
+FileListWidget::FileListWidget( QWidget* parent )
 	: TabContent( parent )
-	, _pClient( pClient )
 {
-	Q_ASSERT( pClient );
-	
 	_pTree = new QTreeWidget( this );
 	QVBoxLayout* pLayout = new QVBoxLayout( this );
 	pLayout->addWidget( _pTree );
@@ -69,8 +62,9 @@ FileListWidget::~FileListWidget()
 
 // ============================================================================
 // Set file list
-void FileListWidget::setFileList( boost::shared_ptr< RufusDc::FileList > pFileList )
+void FileListWidget::setFileList( /*boost::shared_ptr< RufusDc::FileList > pFileList*/ )
 {
+	/*
 	_pFileList = pFileList;
 	
 	// parse xml
@@ -122,6 +116,7 @@ void FileListWidget::setFileList( boost::shared_ptr< RufusDc::FileList > pFileLi
 	// change title
 	QString title = QString( i18n("%1's file list")).arg( pFileList->nick().c_str() );
 	setTabTitle( title );
+	*/
 }
 
 // ============================================================================
@@ -226,6 +221,7 @@ void FileListWidget::contextMenuEvent( QContextMenuEvent* pEvent )
 			QByteArray tth = pItem->data( 0, RoleTTH ).value<QByteArray>();
 			QByteArray path = pItem->data( 0, RolePath ).value<QByteArray>();
 		
+			/*
 			_pClient->downloadFile
 				( _pFileList->hub().c_str()
 				, _pFileList->nick().c_str()
@@ -233,6 +229,7 @@ void FileListWidget::contextMenuEvent( QContextMenuEvent* pEvent )
 				, tth
 				, size
 				);
+			*/
 		}
 	}
 }

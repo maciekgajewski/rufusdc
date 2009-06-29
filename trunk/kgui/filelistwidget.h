@@ -46,7 +46,7 @@ class FileListWidget : public TabContent
 	Q_OBJECT
 
 public:
-	FileListWidget( Client* pClient, QWidget* parent );
+	FileListWidget( QWidget* parent );
 	virtual ~FileListWidget();
 	
 	/**
@@ -55,7 +55,7 @@ public:
 	 * @param  pFileList file list pointer
 	 * @exception std::logic_error if can't parse xml
 	 */
-	void setFileList( boost::shared_ptr< RufusDc::FileList > pFileList );
+	void setFileList( /*boost::shared_ptr< RufusDc::FileList > pFileList*/ );
 
 private:
 
@@ -82,9 +82,6 @@ private:
 		Dir   ///< Directory
 	};
 
-	/// Client implementation
-	Client *_pClient;
-	
 	/// Inside tree widget
 	QTreeWidget* _pTree;
 

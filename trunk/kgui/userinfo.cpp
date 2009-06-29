@@ -33,28 +33,6 @@ UserInfo::~UserInfo()
 {
 }
 
-// ============================================================================
-// Converter
-void UserInfo::convert( const RufusDc::UserInfo& info, QTextCodec* pCodec )
-{
-	_sharesize = info.sharesize();
-	_status = info.status();
-	
-	if ( pCodec )
-	{
-		_nick        = pCodec->toUnicode( info.nick().c_str() );
-		_description = pCodec->toUnicode( info.description().c_str() );
-		_connection  = pCodec->toUnicode( info.connection().c_str() );
-		_email       = pCodec->toUnicode( info.email().c_str() );
-	}
-	else
-	{
-		_nick        = info.nick().c_str();
-		_description = info.description().c_str();
-		_connection  = info.connection().c_str();
-		_email       = info.email().c_str();
-	}
-}
 
 
 }

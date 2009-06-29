@@ -28,8 +28,6 @@ class QAction;
 namespace KRufusDc
 {
 
-class Hub;
-
 /**
 * @brief Displays HUB status.
 * The widget displays data in two panels: chat messages in left panel, and user list in right panel.
@@ -40,7 +38,7 @@ class HubWidget : public TabContent, private Ui::HubWidget // with all due respe
 	Q_OBJECT
 
 public:
-	HubWidget( Hub* pHub, QWidget* parent, Qt::WindowFlags f = 0 );
+	HubWidget( QWidget* parent, Qt::WindowFlags f = 0 );
 	virtual ~HubWidget();
 	
 private Q_SLOTS:
@@ -64,7 +62,6 @@ private Q_SLOTS:
 	
 private:
 	
-	Hub*       _pHub;      ///< Hub wrapper
 	UserModel  _userModel; ///< Data model for user list
 	
 	/// Timer used to periodically update user list

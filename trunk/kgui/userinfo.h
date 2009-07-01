@@ -16,7 +16,15 @@
 #ifndef KRUFUSDCUSERINFO_H
 #define KRUFUSDCUSERINFO_H
 
+// Qt
+#include <QMetaType>
 class QTextCodec;
+
+// dcpp
+namespace dcpp
+{
+	class OnlineUser;
+}
 
 namespace KRufusDc
 {
@@ -30,7 +38,11 @@ class UserInfo
 
 public:
 	UserInfo();
+	UserInfo( const UserInfo& src );
 	~UserInfo();
+	
+	/// Fills in user info with dcpp's user indentity
+	void fromDcppIdentity( const dcpp::OnlineUser& user );
 	
 	void setNick( const QString& value )
 	{
@@ -108,6 +120,8 @@ private:
 };
 
 }
+
+Q_DECLARE_METATYPE(KRufusDc::UserInfo);
 
 #endif // KRUFUSDCUSERINFO_H
 

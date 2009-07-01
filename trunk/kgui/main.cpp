@@ -16,6 +16,7 @@
 
 #include <stdexcept>
 #include <iostream>
+#include <signal.h>
 
 // KDE
 #include <KApplication>
@@ -24,14 +25,36 @@
 #include <QTimer>
 #include <QThreadPool>
 
+// dcpp
+#include "dcpp/stdinc.h"
+#include "dcpp/DCPlusPlus.h"
+#include "dcpp/TimerManager.h"
+
 // local
+#include "userinfo.h"
 #include "mainwindow.h"
 
+// TODO use another facility
+void callBack(void* x, const std::string& a)
+{
+	std::cerr << "Loading: " << a << std::endl;
+}
 
 // ============================================================================
 // main
 int main(int argc, char** argv )
 {
+	// Initialize i18n support
+	/* TODO is this needed?
+	bindtextdomain("linuxdcpp", _DATADIR "/locale");
+	textdomain("linuxdcpp");
+	bind_textdomain_codeset("linuxdcpp", "UTF-8");
+	*/
+	
+	// meta-types registartion
+	qRegisterMetaType<KRufusDc::UserInfo> ("UserInfo");
+
+	// initialize KDE app
 	KAboutData aboutData
 		( "KRufusDC"                  // app name
 		, 0                           // translation dir
@@ -46,21 +69,28 @@ int main(int argc, char** argv )
 	
 	KApplication app;
 
-	// stop thread from thread pool,
-	// TODO this is possible workaround
-	QThreadPool::globalInstance()->setMaxThreadCount( 0 );
-	
 	KRufusDc::MainWindow* pWin = new KRufusDc::MainWindow();
 	pWin->show();
 
 	try
 	{
-		return app.exec();
+		// Start the DC++ client core
+		dcpp::startup(callBack, NULL);
+		dcpp::TimerManager::getInstance()->start();
+		::signal(SIGPIPE, SIG_IGN);
+		
+		int result = app.exec();
+		std::cerr << "Shutting down..." << std::endl;
+		dcpp::shutdown();
+		
+		return result;
 	}
 	catch( const std::exception& e )
 	{
 		std::cerr << "Runaway exception: " << e.what() << std::endl;
 	}
+	
+	return -1;
 }
 
 // EOF

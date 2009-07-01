@@ -1,67 +1,34 @@
-# -*- coding: utf-8 -*-
+# vim: set filetype=py
 
-# todo: Replace this with env.Glob('*.cpp') when Scons 0.98 is widespread enough 
-# (glob.glob() doesn't work here due to the use of a variant dir).
-dcpp_files = [
-	'AdcCommand.cpp',
-	'AdcHub.cpp',
-	'ADLSearch.cpp',
-	'BufferedSocket.cpp',
-	'BZUtils.cpp',
-	'Client.cpp',
-	'ClientManager.cpp',
-	'ConnectionManager.cpp',
-	'CryptoManager.cpp',
-	'DCPlusPlus.cpp',
-	'DirectoryListing.cpp',
-	'Download.cpp',
-	'DownloadManager.cpp',
-	'Encoder.cpp',
-	'Exception.cpp',
-	'FavoriteManager.cpp',
-	'File.cpp',
-	'FinishedItem.cpp',
-	'FinishedManager.cpp',
-	'HashBloom.cpp',
-	'HashManager.cpp',
-	'HttpConnection.cpp',
-	'LogManager.cpp',
-	'NmdcHub.cpp',
-	'QueueItem.cpp',
-	'QueueManager.cpp',
-	'ResourceManager.cpp',
-	'SearchManager.cpp',
-	'SearchResult.cpp',
-	'ServerSocket.cpp',
-	'SettingsManager.cpp',
-	'SFVReader.cpp',
-	'ShareManager.cpp',
-	'SimpleXML.cpp',
-	'Socket.cpp',
-	'SSL.cpp',
-	'SSLSocket.cpp',
-	'stdinc.cpp',
-	'StringTokenizer.cpp',
-	'Text.cpp',
-	'Thread.cpp',
-	'TigerHash.cpp',
-	'TimerManager.cpp',
-	'Transfer.cpp',
-	'Upload.cpp',
-	'UploadManager.cpp',
-	'UserConnection.cpp',
-	'User.cpp',
-	'Util.cpp',
-	'ZUtils.cpp']
+def getRevision(env):
+	try:
+		import bzrlib
+		import bzrlib.builtins
 
-Import('env')
+		tree = bzrlib.builtins.WorkingTree.open_containing(env.Dir("#").abspath)[0]
 
-# We don't want to add this CXXFLAG globally so we copy the env
-env = env.Clone()
-env.Append(CXXFLAGS = ['-DBUILDING_DCPP'])
+		return tree.branch.revision_id_to_revno(tree.last_revision())
+	except ImportError:
+		return 0
 
-# Build the dcpp files and create the library
-libdcpp  = env.StaticLibrary(target = 'dcpp', source = dcpp_files)
+Import('dev source_path')
 
-Return('libdcpp')
+env, target, sources = dev.prepare_build(source_path, 'dcpp', in_bin = False, precompiled_header = 'stdinc')
+sources += dev.get_sources(source_path, "*.c")
 
+env.Append(CPPPATH = ['#/openssl/include', '#/bzip2', '#/zlib'])
+
+env.Append(CPPDEFINES=["BUILDING_DCPP=1"])
+
+for i, source in enumerate(sources):
+	if source.find("version.cpp") != -1:
+		rev = ['DCPP_REVISION=' + str(getRevision(env))]
+		sources[i] = env.StaticObject(source, CPPDEFINES=env['CPPDEFINES'] + rev)
+
+headers=dev.get_sources(source_path, "*.h")
+
+dev.i18n(source_path, env, [sources, headers], 'libdcpp')
+
+ret = env.StaticLibrary(target, sources)
+
+Return('ret')

@@ -112,12 +112,12 @@ int UserModel::rowCount ( const QModelIndex & parent /*= QModelIndex()*/ ) const
 // Number of columns
 int UserModel::columnCount( const QModelIndex & parent /*= QModelIndex()*/ ) const
 {
-	if ( parent.isValid() )
+	if ( ! parent.isValid() )
 	{
 		return 4; // TODO use defined costant here
 	}
 	
-	return _users.size();
+	return 0;
 }
 
 // ============================================================================
@@ -142,6 +142,34 @@ void UserModel::update
 	// rebuild index
 	rebuildIndex();	
 }
+
+// ============================================================================
+// Update data
+void UserModel::update 
+	( const QMap< QString, UserInfo >&   updated
+	, const QSet< QString>&              removed
+	)
+{
+	QMap< QString, UserInfo >  added;
+	QMap< QString, UserInfo >  modified;
+	
+	Q_FOREACH( QString nick, updated.keys() )
+	{
+		// if user is known, add it to 'modified' list
+		if ( _index.contains( nick ) )
+		{
+			modified[ nick ] = updated[ nick ];
+		}
+		// treat is as 'added' otherwise
+		else
+		{
+			added[ nick ] = updated[ nick ];
+		}
+	}
+	
+	update( added, modified, removed );
+}
+
 
 // ============================================================================
 // Rewbuilds index
@@ -237,48 +265,6 @@ void UserModel::addUsers( const QMap< QString, UserInfo >& added )
 		}
 		endInsertRows();
 	}
-	
-	
-	
-	/* TODO old. new implementation needed
-	QMap< QString, UserInfo >::const_iterator addedit;
-	QList< UserInfo >::iterator existingit = _users.begin();
-	int row = 0;
-	for( addedit = added.begin(); addedit != added.end(); ++addedit )
-	{
-		if ( existingit != _users.end() )
-		{
-			while( existingit != _users.end() && (*existingit).nick().toLower() < addedit.key() )
-			{
-				++row;
-				++existingit;
-			}
-		}
-			
-		if (  existingit != _users.end() )
-		{
-			// insert before
-			//qDebug("User %s inserted at row %d, before user %s", qPrintable(addedit.key())
-			//	, row, qPrintable( (*existingit).nick() ) );
-				
-			beginInsertRows( QModelIndex(), row, row );
-				existingit = _users.insert( existingit, addedit.value() );
-				++row;
-				++existingit;
-			endInsertRows();
-		}
-		else
-		{
-			//qDebug("User %s appended to list", qPrintable(addedit.key()) );
-			
-			beginInsertRows( QModelIndex(), _users.size(), _users.size() );
-				_users.append( addedit.value() );
-			endInsertRows();
-			++addedit;
-		}
-	}
-	*/
-	
 }
 
 // ============================================================================
@@ -292,7 +278,6 @@ void UserModel::modifyUsers( const QMap< QString, UserInfo >& modified )
 		QMap< QString, int >::iterator indexit = _index.find( it.key() );
 		if ( indexit == _index.end() )
 		{
-			qWarning("Unknown user %s mark as modified", qPrintable(it.key()) );
 			continue;
 		}
 		int idx = indexit.value();
@@ -318,7 +303,7 @@ void UserModel::removeUsers( const QSet< QString>& removed )
 		QMap< QString, int >::iterator indexit = _index.find( nick );
 		if ( indexit == _index.end() )
 		{
-			qWarning("Unknown user %s mark as removed", qPrintable(nick) );
+			//qWarning("Unknown user %s mark as removed", qPrintable(nick) );
 			continue;
 		}
 		int idx = indexit.value() - numRemoved; // simple correction to index

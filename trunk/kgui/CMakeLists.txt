@@ -29,10 +29,13 @@ kde4_add_ui_files(
 include_directories( ${KDE4_INCLUDES} ${RUFUSDC_SOURCE_DIR}  ${RUFUSDC_BINARY_DIR}/kgui )
 
 add_definitions( -DQT_NO_KEYWORDS )
-set( CMAKE_CXX_FLAGS -fexceptions ) # ugly and non-portable. I liked the qmake's way of doing this better
-set( CMAKE_CXX_FLAGS -O0 )
+add_definitions( -DBUILDING_DCPP ) # required by DCPP source, ot only for building (is used in headers)
+#set( CMAKE_CXX_FLAGS -fexceptions ) # ugly and non-portable. I liked the qmake's way of doing this better
+#set( CMAKE_CXX_FLAGS -O0 )
 
 kde4_add_executable(kgui ${SOURCES})
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${KDE4_ENABLE_EXCEPTIONS}" )
+set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0" )
 
 
 target_link_libraries(
@@ -40,10 +43,6 @@ target_link_libraries(
 	
 	dcpp
 	${KDE4_KDEUI_LIBS}
-	boost_filesystem-mt
-	boost_thread-mt
-	boost_regex-mt
-	boost_signals-mt
-	)
+)
 
 

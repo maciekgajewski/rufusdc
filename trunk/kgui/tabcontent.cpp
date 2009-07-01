@@ -57,4 +57,21 @@ void TabContent::closeTab()
 	deleteLater();
 }
 
+void TabContent::invoke
+	( const char* method
+	, QGenericArgument val0
+	, QGenericArgument val1
+	, QGenericArgument val2
+	, QGenericArgument val3
+	, QGenericArgument val4
+	)
+{
+	QMetaObject::invokeMethod
+		( this
+		, method
+		, Qt::QueuedConnection
+		, val0, val1, val2, val3, val4
+		);
+}
+
 }

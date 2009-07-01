@@ -29,6 +29,7 @@ namespace KRufusDc
 
 /**
 * @brief Data model for user list control.
+* Call update() to update bulk data.
 * @author Maciek Gajewski <maciej.gajewski0@gmail.com>
 */
 
@@ -44,12 +45,22 @@ public:
 	void populate( const QList<UserInfo>& data );
 	
 	/// Updates data dynamically
+	///@param added users added since last update
+	///@param modified users modified since last update
+	///@param removed users removed since last update
 	void update 
 		( const QMap< QString, UserInfo >&   added
 		, const QMap< QString, UserInfo >&   modified
 		, const QSet< QString>&              removed
 		);
 	
+	/// Updates data dynamically
+	///@param users added or modified since last update
+	///@param removed users removed since last update
+	void update 
+		( const QMap< QString, UserInfo >&   updated
+		, const QSet< QString>&              removed
+		);
 	/// direct access to data
 	const UserInfo& getUserInfo( int row ) const { return _users[ row ]; }
 	

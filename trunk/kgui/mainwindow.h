@@ -53,11 +53,6 @@ private Q_SLOTS:
 	
 	void connectToHub( const QString& str ); ///< Connect to hub requested
 	
-	// messages from client
-	
-	/// File list was received
-	void fileListReceived( /*const boost::shared_ptr<RufusDc::FileList>& pFileList*/ );
-
 private:
 	
 	// initializers

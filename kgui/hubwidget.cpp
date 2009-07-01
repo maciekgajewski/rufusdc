@@ -22,6 +22,17 @@
 #include <KMenu>
 #include <KIcon>
 
+// dcpp
+#include <dcpp/stdinc.h>
+#include <dcpp/DCPlusPlus.h>
+#include <dcpp/Client.h>
+#include <dcpp/ClientManager.h>
+#include <dcpp/FavoriteManager.h>
+#include <dcpp/HashManager.h>
+#include <dcpp/SearchManager.h>
+#include <dcpp/ShareManager.h>
+#include <dcpp/UserCommand.h>
+
 // local
 #include "hubwidget.h"
 
@@ -48,19 +59,15 @@ static const int USERLIST_UPDATE_INTERVAL = 5000; // how often user list should 
 
 // ============================================================================
 // Constructor
-HubWidget::HubWidget( QWidget* parent, Qt::WindowFlags f )
+HubWidget::HubWidget( QString address, QWidget* parent, Qt::WindowFlags /*f*/ )
 	: TabContent( parent )
 	, Ui::HubWidget()
+	, _pClient( NULL )
 {
 	setupUi( this );
 	
 	_userUpdateTimer.setInterval( USERLIST_UPDATE_INTERVAL );
 	
-	/*
-	connect( pHub, SIGNAL( hubMessage(int,QString)), SLOT( onHubMessage(int,QString) ) );
-	connect( pHub, SIGNAL( hubNameChanged(QString)), SLOT( updateTitle() ) );
-	connect( pHub, SIGNAL( hubTopicChanged(QString)), SLOT( updateTitle() ) );
-	*/
 	connect( & _userUpdateTimer, SIGNAL(timeout()), SLOT(updateUsers()) );
 	
 	connect( pUsers, SIGNAL(customContextMenuRequested(const QPoint &)), SLOT(usersContextMenu(const QPoint &) ) );
@@ -70,62 +77,40 @@ HubWidget::HubWidget( QWidget* parent, Qt::WindowFlags f )
 	QTimer::singleShot( USERLIST_POPULATE_DELAY, this, SLOT(populateUsers()) );
 	
 	// visual properties of widget's tab
-	updateTitle();
 	setTabIcon( KIcon("network-workgroup") );
 	generateColors();
+	
+	connectToHub( address );
+	
+	// TODO temporarly here, copied from populateUsers
+	pUsers->setModel( & _userModel );
+
 }
 
 // ============================================================================
 // Destructor
 HubWidget::~HubWidget()
-{	
+{
+	// dsiconnect from speaker
+	if ( _pClient )
+	{
+		_pClient->removeListener( this );
+	}
 }
 
 // ============================================================================
-// Update title
-void HubWidget::updateTitle()
+// incoming system message
+void HubWidget::addSystemMessage( const QString& msg )
 {
-	QString title;
-	
-	// do we have name?
-	/*
-	if ( _pHub->name().isEmpty() )
-	{
-		// no, use just title
-		title =  _pHub->address();
-	}
-	else
-	{
-		// use topic if available
-		if ( _pHub->topic().isEmpty() )
-		{
-			title = _pHub->name();
-		}
-		else
-		{
-			title = QString("%1 (%2)").arg( _pHub->name(), _pHub->topic() );
-		}
-	}
-	*/
-	setTabTitle( title );
+	pChat->append( QString("<span style=\"color:%1\">%2</span>").arg( _systemMessageColor.name(), msg ) );
 }
 
 // ============================================================================
-// incoming message
-void HubWidget::onHubMessage( int type, const QString& msg )
+// incoming chat message
+void HubWidget::addChatMessage( const QString& msg )
 {
-	//qDebug("msg: tid:%d type:%d %s", int(QThread::currentThreadId()), type, qPrintable( msg ) );
-	/*
-	if ( type == Hub::System )
-	{
-		pChat->append( QString("<span style=\"color:%1\">%2</span>").arg( _systemMessageColor.name(), msg ) );
-	}
-	else
-	{
-		QString txt = formatMessage( msg );
-		pChat->append( txt );
-	}
-	*/
+	QString txt = formatMessage( msg );
+	pChat->append( QString("<p>")+txt+"</p>" );
 }
 
 // ============================================================================
@@ -138,18 +123,14 @@ QString HubWidget::formatMessage( const QString& msg )
 	formatted.replace( "\n", "<br/>" );
 	formatted.replace( " ", "&nbsp;" );
 	
-	// 1 - make '<nick>' ... at the beginning bold
-	formatted.replace( QRegExp("^<([^>]*)>"), "<b>&lt;\\1&gt;</b>" );
-	
 	// 2 - make all user's nick occurences bold
-	/*
-	QString regex = QString("(%1)").arg( QRegExp::escape( _pHub->parent()->clientThread().client().settings().nick.c_str() ) );
+	QString nick = _pClient->getMyNick().c_str();
+	QString regex = QString("(%1)").arg( QRegExp::escape( nick ) );
 	QString replace = QString("<b><span style=\"color:%1\">\\1</span></b>").arg( _userNickColor.name() );
 	formatted.replace( QRegExp( regex ), replace );
-	*/
 	
 	// convert url's to actual links
-	formatted.replace( QRegExp( "(https?://[._A-Za-z0-9-/]+)" ), "<a href=\"\\1\">\\1</a>" );
+	formatted.replace( QRegExp( "(https?://[._A-Za-z0-9-/%&\\?]+)" ), "<a href=\"\\1\">\\1</a>" );
 	
 	return formatted;
 }
@@ -232,9 +213,10 @@ void HubWidget::usersContextMenu( const QPoint & pos )
 
 // ============================================================================
 // Request file list
-void HubWidget::requestFileList( const QString& nick)
+void HubWidget::requestFileList( const QString& /*nick*/)
 {
 	//_pHub->requestFileList( nick );
+	// TODO love me or leave me
 }
 
 // ============================================================================
@@ -266,4 +248,169 @@ void HubWidget::chatReturnPressed()
 	//_pHub->sendChatMessage( text );
 }
 
+void HubWidget::connectToHub( const QString& address )
+{
+	Q_ASSERT( ! _pClient );
+	
+	_pClient = dcpp::ClientManager::getInstance()->getClient( qPrintable(address) );
+	
+	if ( _pClient )
+	{
+		_pClient->setEncoding("UTF-8"); // TODO pass
+		_pClient->addListener(this);
+		_pClient->connect();
+		
+		// set title to address
+		setTabTitle( address );
+	}
+	else
+	{
+		deleteLater(); // abort, abort, abort!
+	}
 }
+
+// ============================================================================
+// User updated
+void HubWidget::userUpdated( const UserInfo& info )
+{
+	// TODO quick and dirty
+	QSet< QString > removed;
+	QMap< QString, UserInfo > updated;
+	updated[ info.nick() ] = info ;
+	
+	int initialUserCount = _userModel.rowCount();
+	
+	_userModel.update( updated, removed );
+	
+	// if list was empty before ,reset view (why?)
+	if ( ! initialUserCount )
+	{
+		pUsers->reset();
+		// resize columns to content
+		for( int i = 0; i < _userModel.columnCount(); i++ )
+		{
+			pUsers->resizeColumnToContents( i );
+		}
+
+	}
+}
+
+// ============================================================================
+// User removed
+void HubWidget::userRemoved(const UserInfo& info )
+{
+	// TODO quick and dirty
+	QSet< QString > removed;
+	QMap< QString, UserInfo > updated;
+	removed.insert( info.nick() );
+	
+	_userModel.update( updated, removed );
+}
+
+void HubWidget::on(dcpp::ClientListener::Connecting, dcpp::Client *) throw()
+{
+	// TODO use some visual indication instead, like throbber
+	invoke( "addSystemMessage", Q_ARG( QString, i18n("Connecting") ) );
+}
+
+void HubWidget::on(dcpp::ClientListener::Connected, dcpp::Client * pClient) throw()
+{
+	//qDebug("HubWidget::on Connected");
+	invoke( "addSystemMessage", Q_ARG( QString, i18n("Connected") ) );
+	invoke( "setTabTitle", Q_ARG( QString, pClient->getHubName().c_str() ) );
+}
+
+void HubWidget::on(dcpp::ClientListener::UserUpdated, dcpp::Client *, const dcpp::OnlineUser &user) throw()
+{
+	UserInfo  info;
+	info.fromDcppIdentity( user );
+
+	invoke("userUpdated", Q_ARG( UserInfo, info ) );
+}
+
+void HubWidget::on(dcpp::ClientListener::UsersUpdated, dcpp::Client *, const dcpp::OnlineUserList &list) throw()
+{
+	//qDebug("HubWidget::on UsersUpdated, user count=%d", list.size() );
+	
+	for( dcpp::OnlineUserList::const_iterator it = list.begin(); it != list.end(); ++it )
+	{
+		UserInfo  info;
+		dcpp::OnlineUser* pUser = *it;
+		info.fromDcppIdentity( *pUser );
+	
+		// TODO add method that takes list in one shot
+		invoke("userUpdated", Q_ARG( UserInfo, info ) );
+	}
+}
+
+void HubWidget::on(dcpp::ClientListener::UserRemoved, dcpp::Client *, const dcpp::OnlineUser &user) throw()
+{
+	UserInfo  info;
+	info.fromDcppIdentity( user );
+
+	invoke("userRemoved", Q_ARG( UserInfo, info ) );
+}
+
+void HubWidget::on(dcpp::ClientListener::Redirect, dcpp::Client *, const std::string &address) throw()
+{
+	qDebug("HubWidget::on Redirected to: %s", address.c_str() );
+}
+
+void HubWidget::on(dcpp::ClientListener::Failed, dcpp::Client *, const std::string &reason) throw()
+{
+	//qDebug("HubWidget::on Failed");
+	
+	QString message = i18n("Connection failed: %1", reason.c_str() );
+	
+	invoke( "addSystemMessage", Q_ARG( QString, message ) );
+}
+
+void HubWidget::on(dcpp::ClientListener::GetPassword, dcpp::Client *) throw()
+{
+	qDebug("HubWidget::on GetPassword");
+}
+
+void HubWidget::on(dcpp::ClientListener::HubUpdated, dcpp::Client* pClient ) throw()
+{
+	invoke( "setTabTitle", Q_ARG( QString, pClient->getHubName().c_str() ) );
+	// TODO update other data here if needed
+}
+
+void HubWidget::on
+	(dcpp::ClientListener::Message
+	, dcpp::Client *
+	, const dcpp::OnlineUser &/*user*/
+	, const std::string &message
+	, bool /*thirdPerson*/
+	) throw()
+{
+	invoke( "addChatMessage", Q_ARG( QString, message.c_str() ) ); // TODO use other data
+}
+
+void HubWidget::on(dcpp::ClientListener::StatusMessage, dcpp::Client *, const std::string &/*message*/, int /*flag*/) throw()
+{
+	qDebug("HubWidget::on StatusMessage");
+}
+
+void HubWidget::on(dcpp::ClientListener::PrivateMessage, dcpp::Client *, const dcpp::OnlineUser &/*from*/,
+	const dcpp::OnlineUser &/*to*/, const dcpp::OnlineUser &/*replyTo*/, const std::string &/*message*/, bool /*thirdPerson*/) throw()
+{
+	qDebug("HubWidget::on PrivateMessage");
+}
+
+void HubWidget::on(dcpp::ClientListener::NickTaken, dcpp::Client *) throw()
+{
+	qDebug("HubWidget::on NickTaken");
+}
+
+void HubWidget::on(dcpp::ClientListener::SearchFlood, dcpp::Client *, const std::string &/*message*/) throw()
+{
+	qDebug("HubWidget::on SearchFlood");
+}
+
+
+} // namespace
+
+
+// EOF
+

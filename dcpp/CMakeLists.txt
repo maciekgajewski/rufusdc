@@ -53,6 +53,7 @@ set(
 	UserConnection.cpp
 	User.cpp
 	Util.cpp
+	version.cpp
 	ZUtils.cpp
 )
 add_definitions( -DBUILDING_DCPP )
@@ -60,11 +61,9 @@ add_library( dcpp ${SOURCES} )
 
 # libraries to link
 target_link_libraries(
-#	boost_filesystem-mt
-#	boost_thread-mt
-#	boost_regex-mt
-#	boost_signals-mt
+	dcpp
 	
 	bz2
+	ssl
 )
 

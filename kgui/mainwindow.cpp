@@ -37,15 +37,6 @@ MainWindow::MainWindow( QWidget* pParent )
 	initGui();
 	
 	resize( 800, 600 ); // TODO what is this for?
-	
-	// connect to client
-	/*
-	connect
-		( pClient
-		, SIGNAL(signalFileListReceived( const boost::shared_ptr<RufusDc::FileList>& ))
-		, SLOT(fileListReceived( const boost::shared_ptr<RufusDc::FileList>&))
-		);
-	*/
 }
 
 // ============================================================================
@@ -58,6 +49,8 @@ MainWindow::~MainWindow()
 // Init actions
 void MainWindow::initActions()
 {
+	// == main toolbar ==
+	
 	// connect
 	KAction* actionConnect = new KAction( this );
 		actionConnect->setText( i18n("Connect") );
@@ -85,7 +78,11 @@ void MainWindow::onActionConnect()
 // Connect to hub
 void MainWindow::connectToHub( const QString& str )
 {
-	// TODO
+	// TODO make sure the hub is unique
+	// TODO parse addr, use wrapper object
+	HubWidget* pWidget = new HubWidget( str, this );
+	_pTabs->addTab( pWidget );
+	
 }
 
 // ============================================================================
@@ -97,17 +94,5 @@ void MainWindow::initGui()
 	setCentralWidget( _pTabs );
 }
 
-// ============================================================================
-// file list received
-void MainWindow::fileListReceived( /*const boost::shared_ptr<RufusDc::FileList>& pFileList*/ )
-{
-	/*
-	FileListWidget* pWidget = new FileListWidget( _pClient, this );
-	pWidget->setFileList( pFileList );
-	
-	int index = _pTabs->addTab( pWidget );
-	_pTabs->setCurrentIndex( index );
-	*/
-}
 
 }

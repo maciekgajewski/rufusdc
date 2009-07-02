@@ -50,9 +50,10 @@ class HubWidget
 public:
 	/// Constructor
 	///@param address hub address
+	///@param address hub encoding
 	///@param parent parent widget
 	///@param f window flags
-	HubWidget( QString address, QWidget* parent, Qt::WindowFlags f = 0 );
+	HubWidget( const QString& address, const QString& encoding, QWidget* parent, Qt::WindowFlags f = 0 );
 	virtual ~HubWidget();
 	
 private Q_SLOTS: // x-threads messages
@@ -61,7 +62,7 @@ private Q_SLOTS: // x-threads messages
 	void addSystemMessage( const QString& msg );
 	
 	/// Adds chat message to chat window
-	void addChatMessage( const QString& msg );
+	void addChatMessage( const QString& msg, const QString& user, bool thirdPerson );
 	
 	/// User updated
 	void userUpdated( const UserInfo& info );
@@ -77,11 +78,8 @@ private Q_SLOTS: // UI events
 	/// Returns pressed in chat line
 	void chatReturnPressed();
 	
-	/// Periodically updates user list
-	void updateUsers();
-	
 	/// Initializes user list
-	void populateUsers();
+	void initUsersWidget();
 
 private: // Client callbacks
 
@@ -110,27 +108,29 @@ private: // methods
 	void generateColors();
 	
 	/// Connects to hub
-	void connectToHub( const QString& address );
+	void connectToHub( const QString& address, const QString& encoding );
 	
 	/// Fromats incoming message, inserting html tags
 	QString formatMessage( const QString& msg );
+	
+	/// Returns codec for hub
+	/// IF hub i null, or codec can not be found, returns codec for UTF-8
+	static QTextCodec* codecForHub( const dcpp::Client* pHub );
 
 private: // data
 	
 	/// Associated DCPP object
-	dcpp::Client *_pClient;
+	dcpp::Client *_pHub;
 	
 	/// Data model for user list
 	UserModel  _userModel;
-	
-	/// Timer used to periodically update user list
-	QTimer    _userUpdateTimer;
 	
 	QAction* _pActionFileList;
 	
 	// colors
 	QColor   _systemMessageColor;
 	QColor   _userNickColor;
+	QColor   _thirdPersonMsgColor;
 	
 };
 

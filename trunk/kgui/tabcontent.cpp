@@ -57,6 +57,8 @@ void TabContent::closeTab()
 	deleteLater();
 }
 
+// ============================================================================
+// Invoke method across threads
 void TabContent::invoke
 	( const char* method
 	, QGenericArgument val0

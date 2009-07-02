@@ -16,6 +16,8 @@ set(
 	utils.cpp
 	tabcontent.cpp
 	tabwidget.cpp
+	transferwidget.cpp
+	clientthread.cpp
 )
 
 kde4_add_ui_files(
@@ -24,6 +26,7 @@ kde4_add_ui_files(
 	mainwindow.ui
 	hubwidget.ui
 	connectdialog.ui
+	transferwidget.ui
 )
 
 include_directories( ${KDE4_INCLUDES} ${RUFUSDC_SOURCE_DIR}  ${RUFUSDC_BINARY_DIR}/kgui )

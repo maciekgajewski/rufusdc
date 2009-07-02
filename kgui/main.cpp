@@ -33,6 +33,7 @@
 // local
 #include "userinfo.h"
 #include "mainwindow.h"
+#include "clientthread.h"
 
 // TODO use another facility
 void callBack(void* x, const std::string& a)
@@ -70,6 +71,9 @@ int main(int argc, char** argv )
 	KApplication app;
 
 	KRufusDc::MainWindow* pWin = new KRufusDc::MainWindow();
+	
+	KRufusDc::ClientThread clientThread( pWin );
+	
 	pWin->show();
 
 	try
@@ -79,8 +83,15 @@ int main(int argc, char** argv )
 		dcpp::TimerManager::getInstance()->start();
 		::signal(SIGPIPE, SIG_IGN);
 		
+		clientThread.start();
+		
+		KRufusDc::ClientThread::invoke("startListening");
+		KRufusDc::ClientThread::invoke("autoConnect");
+		
 		int result = app.exec();
 		std::cerr << "Shutting down..." << std::endl;
+		
+		clientThread.stop();
 		dcpp::shutdown();
 		
 		return result;

@@ -61,6 +61,13 @@ void TabWidget::tabCloseRequest( QWidget* pTab )
 	if ( pTabContent )
 	{
 		pTabContent->closeTab();
+		
+		// remove tab
+		int idx = indexOf( pTabContent );
+		if ( idx >= 0  )
+		{
+			removeTab( idx );
+		}
 	}
 	else
 	{

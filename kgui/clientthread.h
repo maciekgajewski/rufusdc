@@ -1,4 +1,4 @@
-// Copyright (C) 2008 Maciek Gajewski <maciej.gajewski0@gmail.com>
+// Copyright (C) 2009 Maciek Gajewski <maciej.gajewski0@gmail.com>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,40 +13,39 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-#ifndef KRUFUSDCMAINWINDOW_H
-#define KRUFUSDCMAINWINDOW_H
-
-// boost
-#include <boost/shared_ptr.hpp>
+#ifndef CLIENTTHREAD_H
+#define CLIENTTHREAD_H
 
 // Qt
-#include <QPointer>
-
-// KDE
-#include <KMainWindow>
-
+#include <QThread>
 
 namespace KRufusDc
 {
 
-	class ConnectDialog;
-	class TabWidget;
-	class TransferWidget;
+class MainWindow;
 
 /**
-* @brief Apps main window
+* Client thread. Performs client-related actions in separate thread.
 * @author Maciek Gajewski <maciej.gajewski0@gmail.com>
 */
-class MainWindow : public KMainWindow
+class ClientThread : public QObject
 {
-	Q_OBJECT
+Q_OBJECT
 public:
-	MainWindow( QWidget* pParent = NULL );
-	virtual ~MainWindow();
+    
+	ClientThread( MainWindow* pMainWindow );
+	virtual ~ClientThread();
 
-	/// Calls method from worker thread. Method must be a slot
+	/// Starts client thread
+	void start();
+	
+	/// Stops client thread
+	void stop();
+	
+	/// invokes slot in client thread
+	/// Calls method in client thread. Method must be a slot
 	///@param method method name, w/o signature.
-	void invoke
+	static void invoke
 		( const char* method
 		, QGenericArgument val0 = QGenericArgument( 0 )
 		, QGenericArgument val1 = QGenericArgument()
@@ -54,49 +53,27 @@ public:
 		, QGenericArgument val3 = QGenericArgument()
 		, QGenericArgument val4 = QGenericArgument()
 		);
+	
+private Q_SLOTS: // call these via 'invoke'
 
-private Q_SLOTS:
+	/// Starts active client
+	void startListening();
+	
+	/// Auto-connects to favorite hubs
+	void autoConnect();
 
-	// action handlers
-	
-	void onActionConnect();   	///< Connect action
-	void onActionTransfers();	///< Show transfers action
-	
-	// other slots
-	
-	/// Connect to hub requested
-	void connectToHub( const QString& str, const QString& encoding );
-	
 private:
-	
-	// initializers
-	
-	/// Initializes actions
-	void initActions();
-	
-	/// Initalizes GUI elements
-	void initGui();
 
+	/// Pointer to apps main window
+	MainWindow* _pMainWindow;
 	
-	// dialogs
+	/// Actual thread
+	QThread	_thread;
 	
-	QPointer<ConnectDialog> _pDialogConnect;  ///< "Connect to hub" dialog
-	
-	// widgets
-	
-	TabWidget* _pTabs;	///< Main tab widget
-	
-	// fixed tabs
-	
-	QPointer<TransferWidget> _pTransfer;	///< Transfers
-	
-	
+	/// Static instance pointer
+	static ClientThread* _pInstance;
 };
 
-}
+} // namespace
 
-#endif // KRUFUSDCMAINWINDOW_H
-
-// EOF
-
-
+#endif // CLIENTTHREAD_H

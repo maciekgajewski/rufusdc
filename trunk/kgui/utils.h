@@ -23,7 +23,7 @@
 namespace KRufusDc
 {
 	/// Convers numerical size into human-readable string
-	QString sizeToString( uint64_t size );
+	QString sizeToString( int64_t size );
 
 }
 

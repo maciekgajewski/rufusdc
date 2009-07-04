@@ -278,7 +278,6 @@ void HubWidget::userUpdated( const UserInfo& info )
 			, QStringList() << info.nick() << sizeToString( info.sharesize() ) << info.connection() << info.description()
 			);
 		pItem->setIcon( 0, KIcon("user-online") );
-		
 	}
 	// modify existsing
 	else

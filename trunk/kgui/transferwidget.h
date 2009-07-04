@@ -16,6 +16,9 @@
 #ifndef KRUFUSDCTRANSFERWIDGET_H
 #define KRUFUSDCTRANSFERWIDGET_H
 
+// Qt
+class QTreeWidgetItem;
+
 // dcpp
 #include <dcpp/stdinc.h>
 #include <dcpp/DCPlusPlus.h>
@@ -31,6 +34,8 @@
 
 namespace KRufusDc
 {
+
+class TransferInfo;
 
 /**
  * Widget with lsit of current transfers.
@@ -53,6 +58,35 @@ public:
 	/// Destructor
 	virtual ~TransferWidget();
 
+private Q_SLOTS: // inter-thread receivers
+
+	/// Called when download is added
+	void downloadAdded( const TransferInfo& info );
+	
+	/// Setups widget after content is added
+	void initTransferWidget();
+
+private: //  methods
+
+	enum Columns
+	{
+		COLUMN_NAME = 0,
+		COLUMN_PROGRESS,
+		COLUMN_SPEED,
+		COLUMN_TIME_LEFT,
+		COLUMN_TTH
+	};
+
+	/// Initializes downloads list with items fro mdownload queue
+	void initDownloads();
+
+private: // data
+
+	/// Fixed tree item - parent of all downloads
+	QTreeWidgetItem* _pDownloadsItem;
+	/// Fixed tree item - parent of all uploads
+	QTreeWidgetItem* _pUploadsItem;
+
 protected: // Listener methods
 
 	// DownloadManager
@@ -70,6 +104,10 @@ protected: // Listener methods
 	// QueueManager
 	virtual void on(dcpp::QueueManagerListener::Finished, dcpp::QueueItem* qi, const std::string&, int64_t size) throw();
 	virtual void on(dcpp::QueueManagerListener::Removed, dcpp::QueueItem* qi) throw();
+	virtual void on(dcpp::QueueManagerListener::Added, dcpp::QueueItem *item) throw();
+	virtual void on(dcpp::QueueManagerListener::Moved, dcpp::QueueItem *item, const std::string &oldTarget) throw();
+	virtual void on(dcpp::QueueManagerListener::SourcesUpdated, dcpp::QueueItem *item) throw();
+	virtual void on(dcpp::QueueManagerListener::StatusUpdated, dcpp::QueueItem *item) throw();
 	// UploadManager
 	virtual void on(dcpp::UploadManagerListener::Starting, dcpp::Upload* ul) throw();
 	virtual void on(dcpp::UploadManagerListener::Tick, const dcpp::UploadList& uls) throw();

@@ -10,7 +10,6 @@ set(
 	mainwindow.cpp
 	hubwidget.cpp
 	connectdialog.cpp
-	usermodel.cpp
 	userinfo.cpp
 	filelistwidget.cpp
 	utils.cpp

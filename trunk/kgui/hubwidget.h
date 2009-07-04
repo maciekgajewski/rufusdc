@@ -27,7 +27,6 @@ class QAction;
 
 // local
 #include "tabcontent.h"
-#include "usermodel.h"
 #include "userinfo.h"
 
 #include "ui_hubwidget.h"
@@ -81,7 +80,7 @@ private Q_SLOTS: // UI events
 	/// Initializes user list
 	void initUsersWidget();
 
-private: // Client callbacks
+protected: // Client callbacks
 
 	virtual void on(dcpp::ClientListener::Connecting, dcpp::Client *) throw();
 	virtual void on(dcpp::ClientListener::Connected, dcpp::Client *) throw();
@@ -99,7 +98,18 @@ private: // Client callbacks
 	virtual void on(dcpp::ClientListener::NickTaken, dcpp::Client *) throw();
 	virtual void on(dcpp::ClientListener::SearchFlood, dcpp::Client *, const std::string &message) throw();
 
+private: // types
+	
+	enum UserListColumns
+	{
+		COLUMN_NICK = 0,
+		COLUMN_SHARED,
+		COLUMN_CONECTION,
+		COLUMN_DESCRIPTION,
+	};
+
 private: // methods
+
 
 	/// Request file list from user
 	void requestFileList( const QString& nick );
@@ -117,15 +127,14 @@ private: // methods
 	/// IF hub i null, or codec can not be found, returns codec for UTF-8
 	static QTextCodec* codecForHub( const dcpp::Client* pHub );
 
+private: // actions
+	
+	QAction* _pActionFileList;
+
 private: // data
 	
 	/// Associated DCPP object
 	dcpp::Client *_pHub;
-	
-	/// Data model for user list
-	UserModel  _userModel;
-	
-	QAction* _pActionFileList;
 	
 	// colors
 	QColor   _systemMessageColor;

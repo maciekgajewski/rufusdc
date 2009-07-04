@@ -1,7 +1,8 @@
-<ui version="4.0" >
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
  <class>HubWidget</class>
- <widget class="QWidget" name="HubWidget" >
-  <property name="geometry" >
+ <widget class="QWidget" name="HubWidget">
+  <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
@@ -9,34 +10,51 @@
     <height>459</height>
    </rect>
   </property>
-  <property name="windowTitle" >
+  <property name="windowTitle">
    <string>Hub</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" >
+  <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QSplitter" name="splitter" >
-     <property name="orientation" >
+    <widget class="QSplitter" name="splitter">
+     <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
-     <widget class="KTextBrowser" name="pChat" >
-      <property name="font" >
+     <widget class="KTextBrowser" name="pChat">
+      <property name="font">
        <font>
         <pointsize>7</pointsize>
        </font>
       </property>
      </widget>
-     <widget class="QTreeView" name="pUsers" >
-      <property name="contextMenuPolicy" >
+     <widget class="QTreeWidget" name="pUsers">
+      <property name="contextMenuPolicy">
        <enum>Qt::CustomContextMenu</enum>
       </property>
-      <property name="rootIsDecorated" >
+      <property name="rootIsDecorated">
        <bool>false</bool>
       </property>
+      <property name="sortingEnabled">
+       <bool>true</bool>
+      </property>
+      <property name="allColumnsShowFocus">
+       <bool>true</bool>
+      </property>
+      <attribute name="headerShowSortIndicator" stdset="0">
+       <bool>true</bool>
+      </attribute>
+      <attribute name="headerShowSortIndicator" stdset="0">
+       <bool>true</bool>
+      </attribute>
+      <column>
+       <property name="text">
+        <string notr="true">1</string>
+       </property>
+      </column>
      </widget>
     </widget>
    </item>
    <item>
-    <widget class="KLineEdit" name="pChatInput" />
+    <widget class="KLineEdit" name="pChatInput"/>
    </item>
   </layout>
  </widget>

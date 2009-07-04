@@ -34,6 +34,7 @@
 #include <dcpp/UserCommand.h>
 
 // local
+#include "utils.h"
 #include "hubwidget.h"
 
 
@@ -82,11 +83,16 @@ HubWidget::HubWidget
 	
 	connectToHub( address, encoding );
 	
-	// TODO temporarly here, copied from populateUsers
-	pUsers->setModel( & _userModel );
-
+	// init user list headers
+	pUsers->setHeaderLabels
+		( QStringList()
+			<<	i18n("Nick")
+			<<	i18n("shared")
+			<<	i18n("connection")
+			<<	i18n("description")
+		);
+	pUsers->sortItems( 0, Qt::AscendingOrder );
 }
-
 // ============================================================================
 // Destructor
 HubWidget::~HubWidget()
@@ -131,18 +137,18 @@ QString HubWidget::formatMessage( const QString& msg )
 {
 	QString formatted = msg;
 	
-	// 0. translate HTML special chars
+	// convert url's to actual links
+	formatted.replace( QRegExp( "(https?://[._A-Za-z0-9-/%&\\?=]+)" ), "<a href=\"\\1\">\\1</a>" );
+	
+	// translate HTML special chars
 	formatted.replace( "\n", "<br/>" );
 	formatted.replace( " ", "&nbsp;" );
 	
-	// 2 - make all user's nick occurences bold
+	// make all user's nick occurences bold
 	QString nick = _pHub->getMyNick().c_str();
 	QString regex = QString("(%1)").arg( QRegExp::escape( nick ) );
 	QString replace = QString("<b><span style=\"color:%1\">\\1</span></b>").arg( _userNickColor.name() );
 	formatted.replace( QRegExp( regex ), replace );
-	
-	// convert url's to actual links
-	formatted.replace( QRegExp( "(https?://[._A-Za-z0-9-/%&\\?=]+)" ), "<a href=\"\\1\">\\1</a>" );
 	
 	return formatted;
 }
@@ -152,7 +158,7 @@ QString HubWidget::formatMessage( const QString& msg )
 void HubWidget::initUsersWidget()
 {
 	// resize columns to content
-	for( int i = 0; i < _userModel.columnCount(); i++ )
+	for( int i = 0; i < pUsers->columnCount(); i++ )
 	{
 		pUsers->resizeColumnToContents( i );
 	}
@@ -166,6 +172,7 @@ void HubWidget::usersContextMenu( const QPoint & pos )
 	{
 		// get selection
 		int row = pUsers->selectionModel()->currentIndex().row();
+		/* TODO revisit
 		QString nick = _userModel.getUserInfo( row ).nick();
 			
 		// init menu
@@ -182,6 +189,7 @@ void HubWidget::usersContextMenu( const QPoint & pos )
 		{
 			requestFileList( nick );
 		}
+		*/
 	}
 }
 
@@ -221,8 +229,7 @@ void HubWidget::chatReturnPressed()
 	pChatInput->clear();
 	
 	// encode message
-	QTextCodec* pCodec = codecForHub( _pHub );
-	QByteArray encoded = pCodec->fromUnicode( text );
+	QByteArray encoded = text.toUtf8();
 	
 	_pHub->send( encoded.data(), encoded.length() );
 	
@@ -230,8 +237,11 @@ void HubWidget::chatReturnPressed()
 	addChatMessage( text, _pHub->getMyNick().c_str(), false );
 }
 
+// ============================================================================
+// Connect oto hub
 void HubWidget::connectToHub( const QString& address, const QString& encoding )
 {
+	// TODO dispatch it to client thread?
 	Q_ASSERT( ! _pHub );
 	
 	_pHub = dcpp::ClientManager::getInstance()->getClient( qPrintable(address) );
@@ -255,25 +265,31 @@ void HubWidget::connectToHub( const QString& address, const QString& encoding )
 // User updated
 void HubWidget::userUpdated( const UserInfo& info )
 {
-	// TODO quick and dirty
-	QSet< QString > removed;
-	QMap< QString, UserInfo > updated;
-	updated[ info.nick() ] = info ;
+	QString key = info.nick();
 	
-	int initialUserCount = _userModel.rowCount();
+	// item exists?
+	QList<QTreeWidgetItem*> items = pUsers->findItems( key, Qt::MatchExactly, COLUMN_NICK );
 	
-	_userModel.update( updated, removed );
-	
-	// if list was empty before ,reset view (why?)
-	if ( ! initialUserCount )
+	// add new
+	if ( items.empty() )
 	{
-		pUsers->reset();
-		// resize columns to content
-		for( int i = 0; i < _userModel.columnCount(); i++ )
-		{
-			pUsers->resizeColumnToContents( i );
-		}
-
+		QTreeWidgetItem* pItem = new QTreeWidgetItem
+			( pUsers
+			, QStringList() << info.nick() << sizeToString( info.sharesize() ) << info.connection() << info.description()
+			);
+		pItem->setIcon( 0, KIcon("user-online") );
+		
+	}
+	// modify existsing
+	else
+	{
+		Q_ASSERT( items.size() == 1 );
+		
+		QTreeWidgetItem* pItem = items[0];
+		
+		pItem->setText( COLUMN_SHARED, QString::number(info.sharesize()) );
+		pItem->setText( COLUMN_CONECTION, info.connection() );
+		pItem->setText( COLUMN_DESCRIPTION, info.description() );
 	}
 }
 
@@ -281,14 +297,20 @@ void HubWidget::userUpdated( const UserInfo& info )
 // User removed
 void HubWidget::userRemoved(const UserInfo& info )
 {
-	// TODO quick and dirty
-	QSet< QString > removed;
-	QMap< QString, UserInfo > updated;
-	removed.insert( info.nick() );
+	// item exists?
+	QList<QTreeWidgetItem*> items = pUsers->findItems( info.nick(), Qt::MatchExactly, COLUMN_NICK );
 	
-	_userModel.update( updated, removed );
+	if ( ! items.empty() )
+	{
+		Q_ASSERT( items.size() == 1 );
+		
+		QTreeWidgetItem* pItem = items[0];
+		delete pItem;
+	}
 }
 
+// ============================================================================
+// On connecting
 void HubWidget::on(dcpp::ClientListener::Connecting, dcpp::Client *) throw()
 {
 	// TODO use some visual indication instead, like throbber
@@ -335,7 +357,7 @@ void HubWidget::on(dcpp::ClientListener::UserRemoved, dcpp::Client *, const dcpp
 
 void HubWidget::on(dcpp::ClientListener::Redirect, dcpp::Client *, const std::string &address) throw()
 {
-	qDebug("HubWidget::on Redirected to: %s", address.c_str() );
+	qDebug("NOT IMPLEMENTED: HubWidget::on Redirected to: %s", address.c_str() );
 }
 
 void HubWidget::on(dcpp::ClientListener::Failed, dcpp::Client *, const std::string &reason) throw()
@@ -347,7 +369,7 @@ void HubWidget::on(dcpp::ClientListener::Failed, dcpp::Client *, const std::stri
 
 void HubWidget::on(dcpp::ClientListener::GetPassword, dcpp::Client *) throw()
 {
-	qDebug("HubWidget::on GetPassword");
+	qDebug("NOT IMPLEMENTED: HubWidget::on GetPassword");
 }
 
 void HubWidget::on(dcpp::ClientListener::HubUpdated, dcpp::Client* pClient ) throw()
@@ -360,6 +382,7 @@ void HubWidget::on(dcpp::ClientListener::HubUpdated, dcpp::Client* pClient ) thr
 // Codec for Hub
 QTextCodec* HubWidget::codecForHub( const dcpp::Client* pHub )
 {
+	// TODO remove this method if not used
 	if ( ! pHub )
 	{
 		return QTextCodec::codecForName( "utf-8" );
@@ -380,16 +403,15 @@ QTextCodec* HubWidget::codecForHub( const dcpp::Client* pHub )
 // on chat message
 void HubWidget::on
 	(dcpp::ClientListener::Message
-	, dcpp::Client *
+	, dcpp::Client *pHub
 	, const dcpp::OnlineUser& user
 	, const std::string& rawMessage
 	, bool thirdPerson
 	) throw()
 {
-	QTextCodec* pCodec = codecForHub( &user.getClient() );
-	
-	QString message	= pCodec->toUnicode( rawMessage.c_str() );
-	QString nick    = pCodec->toUnicode( user.getIdentity().getNick().c_str() );
+	QTextCodec* pCodec = codecForHub( pHub );
+	QString message	= QString::fromUtf8( rawMessage.c_str() );
+	QString nick    = QString::fromUtf8( user.getIdentity().getNick().c_str() );
 	
 	invoke
 		( "addChatMessage"
@@ -399,28 +421,30 @@ void HubWidget::on
 		);
 }
 
+// ============================================================================
+// on status message
 void HubWidget::on(dcpp::ClientListener::StatusMessage, dcpp::Client *, const std::string &/*message*/, int /*flag*/) throw()
 {
-	qDebug("HubWidget::on StatusMessage");
+	qDebug("NOT IMPLEMENTED: HubWidget::on StatusMessage");
 	// TODO
 }
 
 void HubWidget::on(dcpp::ClientListener::PrivateMessage, dcpp::Client *, const dcpp::OnlineUser &/*from*/,
 	const dcpp::OnlineUser &/*to*/, const dcpp::OnlineUser &/*replyTo*/, const std::string &/*message*/, bool /*thirdPerson*/) throw()
 {
-	qDebug("HubWidget::on PrivateMessage");
+	qDebug("NOT IMPLEMENTED: HubWidget::on PrivateMessage");
 	// TODO
 }
 
 void HubWidget::on(dcpp::ClientListener::NickTaken, dcpp::Client *) throw()
 {
-	qDebug("HubWidget::on NickTaken");
+	qDebug("NOT IMPLEMENTED: HubWidget::on NickTaken");
 	// TODO
 }
 
 void HubWidget::on(dcpp::ClientListener::SearchFlood, dcpp::Client *, const std::string &/*message*/) throw()
 {
-	qDebug("HubWidget::on SearchFlood");
+	qDebug("NOT IMPLEMENTED: HubWidget::on SearchFlood");
 	// TODO
 }
 

@@ -58,19 +58,13 @@ UserInfo::~UserInfo()
 void UserInfo::fromDcppIdentity( const dcpp::OnlineUser& user )
 {
 	const dcpp::Identity& identity = user.getIdentity();
-	const dcpp::Client& client = user.getClient();
 	
-	const char* encoding = client.getEncoding().c_str();
-	
-	QTextCodec* pCodec = QTextCodec::codecForName( encoding );
-	
-	// TODO
-	_nick		= pCodec->toUnicode( identity.getNick().c_str() );
+	_nick		= QString::fromUtf8( identity.getNick().c_str() );
 	_connection	= identity.getConnection().c_str();
 	_status		= identity.getSID();
 	_sharesize	= identity.getBytesShared();
-	_email		= pCodec->toUnicode( identity.getEmail().c_str() );
-	_description	= pCodec->toUnicode( identity.getDescription().c_str() );
+	_email		= QString::fromUtf8( identity.getEmail().c_str() );
+	_description	= QString::fromUtf8( identity.getDescription().c_str() );
 	
 }
 

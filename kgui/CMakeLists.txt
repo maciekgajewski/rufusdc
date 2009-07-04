@@ -17,6 +17,7 @@ set(
 	tabwidget.cpp
 	transferwidget.cpp
 	clientthread.cpp
+	transferinfo.cpp
 )
 
 kde4_add_ui_files(

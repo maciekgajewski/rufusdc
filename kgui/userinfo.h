@@ -18,7 +18,6 @@
 
 // Qt
 #include <QMetaType>
-class QTextCodec;
 
 // dcpp
 namespace dcpp
@@ -30,7 +29,9 @@ namespace KRufusDc
 {
 
 /**
-* @brief Qt wrapper arounf RufusDc::UserInfo
+* @brief Structure containing user information
+* Used to transform user information across
+* threads.
 * @author Maciek Gajewski <maciej.gajewski0@gmail.com>
 */
 class UserInfo

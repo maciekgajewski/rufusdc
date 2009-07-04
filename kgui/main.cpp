@@ -34,6 +34,7 @@
 #include "userinfo.h"
 #include "mainwindow.h"
 #include "clientthread.h"
+#include "transferinfo.h"
 
 // TODO use another facility
 void callBack(void* x, const std::string& a)
@@ -54,6 +55,8 @@ int main(int argc, char** argv )
 	
 	// meta-types registartion
 	qRegisterMetaType<KRufusDc::UserInfo> ("UserInfo");
+	// meta-types registartion
+	qRegisterMetaType<KRufusDc::TransferInfo> ("TransferInfo");
 
 	// initialize KDE app
 	KAboutData aboutData

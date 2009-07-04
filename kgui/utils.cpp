@@ -21,8 +21,10 @@ namespace KRufusDc
 
 // ============================================================================
 // size to str
-QString sizeToString( uint64_t size )
+QString sizeToString( int64_t size )
 {
+	if ( size < 0 ) return QString::number( size ); // for goofy users
+	
 	QString suffix = "KB"; // use KiB instead?
 	double value = size / double(1024);
 	

@@ -14,6 +14,13 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
+// Qt
+#include <QFileInfo>
+
+// KDE
+#include <KMenu>
+#include <KIcon>
+
 // dcpp
 #include <dcpp/stdinc.h>
 #include <dcpp/DCPlusPlus.h>
@@ -21,6 +28,9 @@
 #include <dcpp/Upload.h>
 
 // local
+#include "transferinfo.h"
+#include "utils.h"
+
 #include "transferwidget.h"
 
 namespace KRufusDc {
@@ -37,6 +47,21 @@ TransferWidget::TransferWidget(QWidget* parent)
 	dcpp::DownloadManager::getInstance()->addListener(this);
 	dcpp::UploadManager::getInstance()->addListener(this);
 	dcpp::ConnectionManager::getInstance()->addListener(this);
+	
+	// init tree
+	
+	// create two - top level items, for downloads and uploads
+	_pDownloadsItem = new QTreeWidgetItem( pTree );
+	_pDownloadsItem->setText( 0, i18n("Downloads") );
+	_pDownloadsItem->setIcon( 0, KIcon("folder-green") );
+	_pDownloadsItem->setFirstColumnSpanned ( true );
+	
+	_pUploadsItem = new QTreeWidgetItem( pTree );
+	_pUploadsItem->setText( 0, i18n("Uploads") );
+	_pUploadsItem->setIcon( 0, KIcon("folder-red") );
+	_pUploadsItem->setFirstColumnSpanned ( true );
+	
+	initDownloads();
 }
 
 // ============================================================================
@@ -48,6 +73,86 @@ TransferWidget::~TransferWidget()
 	dcpp::UploadManager::getInstance()->removeListener(this);
 	dcpp::ConnectionManager::getInstance()->removeListener(this);
 }
+
+// ============================================================================
+// Download added
+void TransferWidget::downloadAdded( const TransferInfo& info )
+{
+	qDebug("Dowload added, file: %s", qPrintable( info.path() ) );
+	
+	// TODO make sure there is no such download already
+
+	QTreeWidgetItem* pItem = new QTreeWidgetItem( _pDownloadsItem );
+	
+	QString baseName = QFileInfo( info.path() ).fileName();
+	
+	// file name
+	pItem->setText( COLUMN_NAME, baseName );
+	pItem->setToolTip( COLUMN_NAME, info.path() );
+	
+	// icon
+	if ( info.onlineUsers() > 0 )
+	{
+		pItem->setIcon( COLUMN_NAME, KIcon("user-online") );
+	}
+	else
+	{
+		pItem->setIcon( COLUMN_NAME, KIcon("user-offline") );
+	}
+	
+	// progress
+	int64_t size = info.size();
+	int64_t downloaded = info.transferred();
+	double percent = 100.0*(downloaded/size);
+	QString progress = QString("<b>%1%</b> (%2 / %3)")
+		.arg( percent, 0, 'g', 2 )
+		.arg( sizeToString( downloaded ) )
+		.arg( sizeToString( size ) );
+		
+	pItem->setText( COLUMN_PROGRESS, progress );
+	
+	// TTH
+	pItem->setText( COLUMN_TTH, info.TTH() );
+	
+	
+}
+
+// ============================================================================
+// Init tree
+void TransferWidget::initTransferWidget()
+{
+	// resize columns to content
+	for( int i = 0; i < pTree->columnCount(); i++ )
+	{
+		pTree->resizeColumnToContents( i );
+	}
+	
+	_pDownloadsItem->setExpanded( true );
+}
+
+// ============================================================================
+// Initializes downloads
+void TransferWidget::initDownloads()
+{
+	const dcpp::QueueItem::StringMap &ll = dcpp::QueueManager::getInstance()->lockQueue();
+	
+	for( dcpp::QueueItem::StringMap::const_iterator it = ll.begin(); it != ll.end(); ++it)
+	{
+		// extract QueueItem
+		dcpp::QueueItem* pItem = it->second;
+	
+		// convert to transfer info
+		TransferInfo info;
+		info.fromQueueItem( pItem );
+		
+		// add method to queue
+		invoke("downloadAdded", Q_ARG( TransferInfo, info ) );
+		invoke("initTransferWidget"); // put it at the end of the queue
+	}
+	
+	dcpp::QueueManager::getInstance()->unlockQueue();
+}
+
 
 void TransferWidget::on(dcpp::DownloadManagerListener::Requesting, dcpp::Download* dl) throw()
 {
@@ -142,6 +247,30 @@ void TransferWidget::on(dcpp::UploadManagerListener::Complete, dcpp::Upload* ul)
 void TransferWidget::on(dcpp::UploadManagerListener::Failed, dcpp::Upload* ul, const std::string& reason) throw()
 {
 	qDebug("TransferWidget: UploadManagerListener::Failed");
+}
+
+void TransferWidget::on(dcpp::QueueManagerListener::Added, dcpp::QueueItem *item) throw()
+{
+	qDebug("TransferWidget: QueueManagerListener::Added");
+	TransferInfo info;
+	info.fromQueueItem( item );
+	
+	invoke( "downloadAdded", Q_ARG( TransferInfo, info ) );	
+}
+
+void TransferWidget::on(dcpp::QueueManagerListener::Moved, dcpp::QueueItem *item, const std::string &oldTarget) throw()
+{
+	qDebug("TransferWidget: QueueManagerListener::Moved");
+}
+
+void TransferWidget::on(dcpp::QueueManagerListener::SourcesUpdated, dcpp::QueueItem *item) throw()
+{
+	qDebug("TransferWidget: QueueManagerListener::SourcesUpdated");
+}
+
+void TransferWidget::on(dcpp::QueueManagerListener::StatusUpdated, dcpp::QueueItem *item) throw()
+{
+	qDebug("TransferWidget: QueueManagerListener::StatusUpdated");
 }
 
 

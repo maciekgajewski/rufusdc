@@ -18,6 +18,7 @@ set(
 	transferwidget.cpp
 	clientthread.cpp
 	transferinfo.cpp
+	downloadinfo.cpp
 )
 
 kde4_add_ui_files(

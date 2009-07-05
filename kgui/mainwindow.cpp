@@ -115,7 +115,8 @@ void MainWindow::onActionTransfers()
 	if ( ! _pTransfer )
 	{
 		_pTransfer = new TransferWidget( this );
-		_pTabs->addTab( _pTransfer );
+		int idx = _pTabs->addTab( _pTransfer );
+		_pTabs->setCurrentIndex( idx );
 	}
 	else
 	{

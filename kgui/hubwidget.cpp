@@ -137,12 +137,12 @@ QString HubWidget::formatMessage( const QString& msg )
 {
 	QString formatted = msg;
 	
-	// convert url's to actual links
-	formatted.replace( QRegExp( "(https?://[._A-Za-z0-9-/%&\\?=]+)" ), "<a href=\"\\1\">\\1</a>" );
-	
 	// translate HTML special chars
 	formatted.replace( "\n", "<br/>" );
 	formatted.replace( " ", "&nbsp;" );
+	
+	// convert url's to actual links
+	formatted.replace( QRegExp( "(https?://[._/%&\\?=A-Za-z0-9-]+)(&nbsp;){0,1}" ), "<a href=\"\\1\">\\1</a>" );
 	
 	// make all user's nick occurences bold
 	QString nick = _pHub->getMyNick().c_str();

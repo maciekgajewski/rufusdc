@@ -22,8 +22,15 @@
 
 namespace KRufusDc
 {
+
 	/// Convers numerical size into human-readable string
 	QString sizeToString( int64_t size );
+	
+	/// Converts transfer speed to string
+	QString speedToString( double speed );
+	
+	/// Converts remaining time to string
+	QString timeToString( int seconds );
 
 }
 

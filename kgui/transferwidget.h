@@ -35,7 +35,9 @@ class QTreeWidgetItem;
 namespace KRufusDc
 {
 
+class DownloadInfo;
 class TransferInfo;
+class FixedPosItem;
 
 /**
  * Widget with lsit of current transfers.
@@ -61,13 +63,32 @@ public:
 private Q_SLOTS: // inter-thread receivers
 
 	/// Called when download is added
-	void downloadAdded( const TransferInfo& info );
+	void downloadAdded( const DownloadInfo& info );
+	
+	/// Called when queue item status changes
+	void downloadUpdated( const DownloadInfo& info );
+	
+	/// Called when download transfer is updated
+	void downloadTransferUpdated( const TransferInfo& info );
+	
+	/// Called when download transfer is removed
+	void downloadTransferRemoved( const TransferInfo& info );
 	
 	/// Setups widget after content is added
 	void initTransferWidget();
+	
+	/// Updated accumulated data from transfers
+	void updateDownloadFromTransfers( QTreeWidgetItem* pItem );
+	
+	/// Called when upload transfer should be updated
+	void uploadUpdated( const TransferInfo& info );
+	
+	/// Called when upload transfer should be removed
+	void uploadRemoved( const TransferInfo& info );
 
 private: //  methods
 
+	/// Tree widget items
 	enum Columns
 	{
 		COLUMN_NAME = 0,
@@ -76,16 +97,49 @@ private: //  methods
 		COLUMN_TIME_LEFT,
 		COLUMN_TTH
 	};
+	
+	/// Extra data associated with tree widget item
+	enum Roles
+	{
+		ROLE_SORT = Qt::UserRole + 1, ///< Data used to sort
+		ROLE_DATA                     ///< Auxiliary data
+	};
 
 	/// Initializes downloads list with items fro mdownload queue
 	void initDownloads();
+	
+	/// Updates trabsfer widget with info data
+	void updateDownloadItem( QTreeWidgetItem* , const DownloadInfo& info );
+	
+	/// Finds download with specified TTH
+	QTreeWidgetItem* findDownload( const QString& TTH );
+	
+	/// Updates doenload-transfer item
+	void updateDownloadTransferItem( QTreeWidgetItem* pItem, const TransferInfo& info );
+
+	/// find dowlaod transfer
+	QTreeWidgetItem* findDownloadTransfer( QTreeWidgetItem* pParent, const QString& CID );
+	
+	/// Updates upload item
+	void updateUploadItem( QTreeWidgetItem* pItem, const TransferInfo& info );
+	
+	/// Find item for upload
+	QTreeWidgetItem* findUpload( const TransferInfo& info );
+
 
 private: // data
 
-	/// Fixed tree item - parent of all downloads
-	QTreeWidgetItem* _pDownloadsItem;
+	/// Fixed tree item - parent of all active downloads
+	FixedPosItem* _pDownloadsItem;
+	
 	/// Fixed tree item - parent of all uploads
-	QTreeWidgetItem* _pUploadsItem;
+	FixedPosItem* _pUploadsItem;
+
+	/// Fixed tree item - parent of all inactive downloads
+	FixedPosItem* _pInactiveDownloadsItem;
+	
+	/// Fixed tree item - parent of all finished downloads
+	FixedPosItem* _pFinishedDownloadsItem;
 
 protected: // Listener methods
 

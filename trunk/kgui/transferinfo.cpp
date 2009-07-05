@@ -18,7 +18,10 @@
 #include <dcpp/stdinc.h>
 #include <dcpp/DCPlusPlus.h>
 #include <dcpp/Upload.h>
-#include <dcpp/QueueItem.h>
+#include <dcpp/Download.h>
+#include <dcpp/User.h>
+#include <dcpp/ClientManager.h>
+
 
 
 // local
@@ -45,31 +48,39 @@ void TransferInfo::fromDcppUpload( dcpp::Upload* pUpload )
 	Q_ASSERT( pUpload );
 
 	_type = UPLOAD;
-	
-	_TTH = pUpload->getTTH().toBase32().c_str();
-	_onlineUsers = 1;
-	_path = pUpload->getPath().c_str();
-	_size = pUpload->getSize();
-	_transferred = pUpload->getPos();
-	_averageSpeed = pUpload->getAverageSpeed();
-	_CID = pUpload->getUser()->getCID().toBase32().c_str();
+	fromDcppTransfer( pUpload );
 }
 
 // ============================================================================
-// From queue item
-void TransferInfo::fromQueueItem( dcpp::QueueItem* pItem )
+// From download
+void TransferInfo::fromDcppDownload( dcpp::Download* pDownload )
 {
-	Q_ASSERT( pItem );
+	Q_ASSERT( pDownload );
 	
 	_type = DOWNLOAD;
+	fromDcppTransfer( pDownload );
+}
+
+// ============================================================================
+// From transfer
+void TransferInfo::fromDcppTransfer( dcpp::Transfer* pTransfer )
+{
 	
-	_TTH = pItem->getTTH().toBase32().c_str();
-	_onlineUsers = pItem->countOnlineUsers();
-	_path = QString::fromUtf8( pItem->getTargetFileName().c_str() );
-	_size = pItem->getSize();
-	_transferred = pItem->getDownloadedBytes();
-	_averageSpeed = 0; // has to be calculated
-	_CID = QString();
+	_TTH = pTransfer->getTTH().toBase32().c_str();
+	_path = pTransfer->getPath().c_str();
+	_size = pTransfer->getSize();
+	_transferred = pTransfer->getPos();
+	_averageSpeed = pTransfer->getAverageSpeed();
+	_CID = pTransfer->getUser()->getCID().toBase32().c_str();
+	_secondsLeft = pTransfer->getSecondsLeft();
+	
+	// nick
+	dcpp::StringList sl = dcpp::ClientManager::getInstance()->getNicks( pTransfer->getUser()->getCID() );
+	if ( sl.size() > 0 ) _userNick = QString::fromUtf8( sl.front().c_str() );
+	
+	// hub
+	sl = dcpp::ClientManager::getInstance()->getHubNames( pTransfer->getUser()->getCID() );
+	if ( sl.size() > 0 ) _userHub = QString::fromUtf8( sl.front().c_str() );
 }
 
 

@@ -22,8 +22,9 @@
 // dcpp
 namespace dcpp
 {
-	class QueueItem;
 	class Upload;
+	class Download;
+	class Transfer;
 }
 
 namespace KRufusDc
@@ -51,22 +52,17 @@ public:
 	/// Fills the structure with data from cpp::Upload
 	void fromDcppUpload( dcpp::Upload* pUpload );
 	
-	/// Fills the structure from QueueItem
-	void fromQueueItem( dcpp::QueueItem* pItem );
-	
+	/// Fills the structure with data from cpp::Download
+	void fromDcppDownload( dcpp::Download* pDownload );
+
 public: // accessors
 
 	/// Returns transfer type
 	Type type() const { return _type; }
-
+	
 	QString TTH() const
 	{
 		return _TTH;
-	}
-
-	int onlineUsers() const
-	{
-		return _onlineUsers;
 	}
 
 	QString path() const
@@ -89,23 +85,61 @@ public: // accessors
 		return _averageSpeed;
 	}
 
+	QString userNick() const
+	{
+		return _userNick;
+	}
+
+	QString userHub() const
+	{
+		return _userHub;
+	}
+
+	int64_t secondsLeft() const
+	{
+		return _secondsLeft;
+	}
+
+	void setStatus ( const QString& theValue )
+	{
+		_status = theValue;
+	}
+	
+
+	QString status() const
+	{
+		return _status;
+	}
+
+	QString CID() const
+	{
+		return _CID;
+	}
+	
+	
+	
+
+private: // method
+
+	/// Copies data from dcpp structure
+	void fromDcppTransfer( dcpp::Transfer* pTransfer );
+
 private: // data
 
-	Type _type;
+	Type  _type;   ///< Transfer type (direction)
+	
+	QString _status;         ///< Human-readable status description
 	
 	QString _TTH;            ///< TTH (base32) (the key)
-	int     _onlineUsers;    ///< Online users for the transfer (download specific)
 	QString _path;           ///< File path
 	int64_t _size;           ///< File size
 	int64_t _transferred;    ///< Transferred bytes
 	double	_averageSpeed;   ///< Average transfer speed
-	QString _CID;            ///< User ID (base32) (upload specific)
+	QString _CID;            ///< User ID (base32)
 	
-	/* TODO this belongs to connection
 	int64_t _secondsLeft;    ///< Estimated time remaining
 	QString _userNick;       ///< User nick
 	QString _userHub;        ///< User hub
-	*/
 
 };
 

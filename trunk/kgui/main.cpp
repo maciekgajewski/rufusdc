@@ -35,9 +35,10 @@
 #include "mainwindow.h"
 #include "clientthread.h"
 #include "transferinfo.h"
+#include "downloadinfo.h"
 
 // TODO use another facility
-void callBack(void* x, const std::string& a)
+void callBack(void* , const std::string& a)
 {
 	std::cerr << "Loading: " << a << std::endl;
 }
@@ -55,8 +56,8 @@ int main(int argc, char** argv )
 	
 	// meta-types registartion
 	qRegisterMetaType<KRufusDc::UserInfo> ("UserInfo");
-	// meta-types registartion
 	qRegisterMetaType<KRufusDc::TransferInfo> ("TransferInfo");
+	qRegisterMetaType<KRufusDc::DownloadInfo> ("DownloadInfo");
 
 	// initialize KDE app
 	KAboutData aboutData

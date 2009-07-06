@@ -66,7 +66,12 @@ private Q_SLOTS:
 	
 	/// Connect to hub requested
 	void connectToHub( const QString& str, const QString& encoding );
-	
+
+protected: // event handlers
+
+	/// Close event handlers - hides window instead of closing it
+	virtual void closeEvent( QCloseEvent * event );
+
 private:
 	
 	// initializers

@@ -14,10 +14,14 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
+// Qt
+#include <QCloseEvent>
+
 // kde
 #include <KLocalizedString>
 #include <KAction>
 #include <KToolBar>
+#include <KSystemTrayIcon>
 
 // local
 #include "connectdialog.h"
@@ -39,7 +43,14 @@ MainWindow::MainWindow( QWidget* pParent )
 	initActions();
 	initGui();
 	
-	resize( 800, 600 ); // TODO what is this for?
+	resize( 800, 600 ); // TODO wild guess, use sessions?
+	
+	// init systray
+	KSystemTrayIcon* pSystray = new KSystemTrayIcon
+		( QApplication::windowIcon()
+		, this
+		);
+	pSystray->show();
 }
 
 // ============================================================================
@@ -144,5 +155,18 @@ void MainWindow::initGui()
 	setCentralWidget( _pTabs );
 }
 
-
+// ============================================================================
+// Close event
+void MainWindow::closeEvent( QCloseEvent * event )
+{
+	//hide();
+	setWindowState( Qt::WindowMinimized );
+	event->accept();
 }
+
+
+} // ns
+
+// EOF
+
+

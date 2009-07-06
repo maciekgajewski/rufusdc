@@ -19,7 +19,7 @@
 #include <signal.h>
 
 // KDE
-#include <KApplication>
+#include <KUniqueApplication>
 #include <KAboutData>
 #include <KCmdLineArgs>
 #include <QTimer>
@@ -47,18 +47,11 @@ void callBack(void* , const std::string& a)
 // main
 int main(int argc, char** argv )
 {
-	// Initialize i18n support
-	/* TODO is this needed?
-	bindtextdomain("linuxdcpp", _DATADIR "/locale");
-	textdomain("linuxdcpp");
-	bind_textdomain_codeset("linuxdcpp", "UTF-8");
-	*/
-	
 	// meta-types registartion
 	qRegisterMetaType<KRufusDc::UserInfo> ("UserInfo");
 	qRegisterMetaType<KRufusDc::TransferInfo> ("TransferInfo");
 	qRegisterMetaType<KRufusDc::DownloadInfo> ("DownloadInfo");
-
+	
 	// initialize KDE app
 	KAboutData aboutData
 		( "KRufusDC"                  // app name
@@ -68,11 +61,21 @@ int main(int argc, char** argv )
 		, ki18n("DC++ client")        // short description
 		, KAboutData::License_GPL_V2  // License
 		, ki18n("(c) 2008 Maciej Gajewski") // copyright statement
+		, ki18n("RufusDC is a KDE4 DC++ client")
+		, "http://code.google.com/p/rufusdc/"
 		);
 	
 	KCmdLineArgs::init( argc, argv, &aboutData );
 	
-	KApplication app;
+	// create app
+	KUniqueApplication app;
+
+	// load icon
+	QIcon appIcon;
+	appIcon.addFile(":/resources/logo128.png", QSize(128, 128 ) );
+	appIcon.addFile(":/resources/logo32.png", QSize(32, 32 ) );
+	appIcon.addFile(":/resources/logo16.png", QSize(16, 16 ) );
+	app.setWindowIcon( appIcon );
 
 	KRufusDc::MainWindow* pWin = new KRufusDc::MainWindow();
 	

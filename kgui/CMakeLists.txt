@@ -21,6 +21,8 @@ set(
 	downloadinfo.cpp
 )
 
+qt4_add_resources( SOURCES resources.qrc )
+
 kde4_add_ui_files(
 	SOURCES
 	

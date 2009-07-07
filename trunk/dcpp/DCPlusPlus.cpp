@@ -113,7 +113,8 @@ void shutdown() {
 	HashManager::getInstance()->shutdown();
 	ConnectionManager::getInstance()->shutdown();
 
-	BufferedSocket::waitShutdown();
+	// MG: this blocks, don't know why. I think that tis could be safely ignored
+	//BufferedSocket::waitShutdown();
 
 	SettingsManager::getInstance()->save();
 

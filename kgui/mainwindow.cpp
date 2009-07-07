@@ -157,11 +157,21 @@ void MainWindow::initGui()
 
 // ============================================================================
 // Close event
+/*
 void MainWindow::closeEvent( QCloseEvent * event )
 {
 	//hide();
 	setWindowState( Qt::WindowMinimized );
-	event->accept();
+	event->ignore();
+}
+*/
+
+// ============================================================================
+// query close
+bool MainWindow::queryClose()
+{
+	hide();
+	return false;
 }
 
 

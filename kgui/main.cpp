@@ -68,7 +68,8 @@ int main(int argc, char** argv )
 	KCmdLineArgs::init( argc, argv, &aboutData );
 	
 	// create app
-	KUniqueApplication app;
+	//KUniqueApplication app; // TODO this make debugging difficult
+	KApplication app;
 
 	// load icon
 	QIcon appIcon;
@@ -96,9 +97,13 @@ int main(int argc, char** argv )
 		KRufusDc::ClientThread::invoke("autoConnect");
 		
 		int result = app.exec();
-		std::cerr << "Shutting down..." << std::endl;
 		
+		std::cerr << "Stopping client thread..." << std::endl;
 		clientThread.stop();
+		
+		delete pWin;
+		
+		std::cerr << "Shutting down..." << std::endl;
 		dcpp::shutdown();
 		
 		return result;

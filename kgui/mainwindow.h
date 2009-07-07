@@ -70,7 +70,12 @@ private Q_SLOTS:
 protected: // event handlers
 
 	/// Close event handlers - hides window instead of closing it
-	virtual void closeEvent( QCloseEvent * event );
+	//virtual void closeEvent( QCloseEvent * event ); // TODO trying queryClose instead
+	
+protected: // KMainWindow
+
+	/// Asks wheter window can be closed
+	virtual bool queryClose();
 
 private:
 	

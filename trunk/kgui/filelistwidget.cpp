@@ -17,10 +17,15 @@
 // std
 #include <stdexcept>
 
+// bzlib
+#include <bzlib.h>
+
 // qt
 #include <QDomDocument>
 #include <QContextMenuEvent>
 #include <QVBoxLayout>
+#include <QFile>
+#include <QFileInfo>
 
 // KDE
 #include <KIcon>
@@ -61,18 +66,95 @@ FileListWidget::~FileListWidget()
 }
 
 // ============================================================================
-// Set file list
-void FileListWidget::setFileList( /*boost::shared_ptr< RufusDc::FileList > pFileList*/ )
+// Load file list
+void FileListWidget::loadFromFile( const QString& path )
 {
-	/*
-	_pFileList = pFileList;
+	// open file
+	QFile file( path );
+	if ( ! file.open( QIODevice::ReadOnly ) )
+	{
+		qDebug("Can't open file list file: %s", qPrintable(path) );
+		return; 
+	}
 	
+	// read data
+	QByteArray rawData = file.readAll();
+	QByteArray data;
+	
+	// decompress if needed
+	if ( QFileInfo( path ).suffix().toLower() == "bz2" )
+	{
+		try
+		{
+			data = decompressBZ2( rawData );
+		}
+		catch(...)
+		{
+			qDebug("Error decompressing bz2");
+			return;
+		}
+	}
+	else
+	{
+		// use raw data
+		data = rawData;
+	}
+	
+	// load XML
+	try
+	{
+		loadFromXML( data );
+	}
+	catch(...)
+	{
+		qDebug("Error loading from XML");
+	}
+}
+
+// ============================================================================
+// Decompress
+QByteArray FileListWidget::decompressBZ2( const QByteArray& compressed )
+{
+	unsigned int inSize = compressed.size();
+	const char* inBuf = compressed.data();
+	
+	unsigned int outSize = inSize * 10; // rough estimate
+	
+	char* outBuf = new char[ outSize ];
+	
+	int res = BZ2_bzBuffToBuffDecompress
+			( outBuf
+			, &outSize
+			, (char*)inBuf
+			, inSize
+			, 0 // no small, be fast!
+			, 1 // some verbosity (0-4)
+			);
+	
+	if ( res == BZ_OK )
+	{
+			//cerr << "file list decompressed from " << inSize << " to " << outSize << " bytes" << endl;
+			QByteArray result( outBuf, outSize );
+			delete[] outBuf;
+			
+			return result;
+	}
+	else
+	{
+			delete[] outBuf;
+			throw std::logic_error( "Error decompresing filelist.xml.bz2." );
+	}
+}
+
+// ============================================================================
+// Load from XML
+void FileListWidget::loadFromXML( const QByteArray& xml )
+{
+
 	// parse xml
 	QDomDocument doc;
 	
-	QByteArray data( pFileList->xml().c_str() );
-	
-	if ( ! doc.setContent( data, false ) )
+	if ( ! doc.setContent( xml, false ) )
 	{
 		throw std::logic_error("Can't parse XML");
 	}
@@ -114,9 +196,9 @@ void FileListWidget::setFileList( /*boost::shared_ptr< RufusDc::FileList > pFile
 	_pTree->setColumnWidth( 0, 250 );
 	
 	// change title
-	QString title = QString( i18n("%1's file list")).arg( pFileList->nick().c_str() );
-	setTabTitle( title );
-	*/
+	// TODO
+	//QString title = QString( i18n("%1's file list")).arg( pFileList->nick().c_str() );
+	//setTabTitle( title );
 }
 
 // ============================================================================
@@ -221,7 +303,7 @@ void FileListWidget::contextMenuEvent( QContextMenuEvent* pEvent )
 			QByteArray tth = pItem->data( 0, RoleTTH ).value<QByteArray>();
 			QByteArray path = pItem->data( 0, RolePath ).value<QByteArray>();
 		
-			/*
+			/* TODO
 			_pClient->downloadFile
 				( _pFileList->hub().c_str()
 				, _pFileList->nick().c_str()

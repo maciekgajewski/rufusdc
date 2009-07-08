@@ -60,6 +60,9 @@ void DownloadInfo::fromQueueItem( dcpp::QueueItem* pItem )
 	{
 		_state = WAITING;
 	}
+
+	_isFileList = pItem->isSet( dcpp::QueueItem::FLAG_CLIENT_VIEW | dcpp::QueueItem::FLAG_USER_LIST);
+
 }
 
 

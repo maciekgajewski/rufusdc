@@ -68,6 +68,9 @@ private Q_SLOTS: // inter-thread receivers
 	/// Called when queue item status changes
 	void downloadUpdated( const DownloadInfo& info );
 	
+	/// Called when queue item is removed
+	void downloadRemoved( const DownloadInfo& info );
+	
 	/// Called when download transfer is updated
 	void downloadTransferUpdated( const TransferInfo& info );
 	

@@ -17,11 +17,17 @@
 // Qt
 #include <QCloseEvent>
 
-// kde
+// KDE
 #include <KLocalizedString>
 #include <KAction>
 #include <KToolBar>
 #include <KSystemTrayIcon>
+
+// dcpp
+#include <dcpp/stdinc.h>
+#include <dcpp/DCPlusPlus.h>
+#include <dcpp/QueueManager.h>
+#include <dcpp/Download.h>
 
 // local
 #include "connectdialog.h"
@@ -51,12 +57,15 @@ MainWindow::MainWindow( QWidget* pParent )
 		, this
 		);
 	pSystray->show();
+	
+	dcpp::QueueManager::getInstance()->addListener(this);
 }
 
 // ============================================================================
 // Destructor
 MainWindow::~MainWindow()
 {
+	dcpp::QueueManager::getInstance()->removeListener(this);
 }
 
 // ============================================================================
@@ -170,8 +179,26 @@ void MainWindow::closeEvent( QCloseEvent * event )
 // query close
 bool MainWindow::queryClose()
 {
+	// do not close, just hide. closing via systray icon menu 
 	hide();
 	return false;
+}
+
+// ============================================================================
+// On downlopad finished
+void MainWindow::on(dcpp::QueueManagerListener::Finished, dcpp::QueueItem* qi, const std::string&, int64_t size) throw()
+{
+	if ( qi->isSet( dcpp::QueueItem::FLAG_CLIENT_VIEW | dcpp::QueueItem::FLAG_USER_LIST) )
+	{
+		dcpp::UserPtr user = qi->getDownloads()[0]->getUser();
+		QString listName = QString::fromUtf8( qi->getListName().c_str() );
+		
+		qDebug("list downloaded: %s", qi->getListName().c_str() );
+
+		//typedef Func4<MainWindow, UserPtr, string, string, bool> F4;
+		//F4 *func = new F4(this, &MainWindow::showShareBrowser_gui, user, listName, dir, TRUE);
+		//WulforManager::get()->dispatchGuiFunc(func);
+	}
 }
 
 

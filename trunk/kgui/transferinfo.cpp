@@ -73,7 +73,7 @@ void TransferInfo::fromDcppTransfer( dcpp::Transfer* pTransfer )
 	_averageSpeed = pTransfer->getAverageSpeed();
 	_CID = pTransfer->getUser()->getCID().toBase32().c_str();
 	_secondsLeft = pTransfer->getSecondsLeft();
-	
+
 	// nick
 	dcpp::StringList sl = dcpp::ClientManager::getInstance()->getNicks( pTransfer->getUser()->getCID() );
 	if ( sl.size() > 0 ) _userNick = QString::fromUtf8( sl.front().c_str() );

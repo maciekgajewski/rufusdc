@@ -100,6 +100,7 @@ protected: // Client callbacks
 
 private: // types
 	
+	/// user list columns
 	enum UserListColumns
 	{
 		COLUMN_NICK = 0,
@@ -107,12 +108,19 @@ private: // types
 		COLUMN_CONECTION,
 		COLUMN_DESCRIPTION,
 	};
+	
+	/// user list data roler
+	enum UserListRoles
+	{
+		ROLE_DATA = Qt::UserRole + 1 ///< Role used to store data in column 0
+	};
 
 private: // methods
 
 
 	/// Request file list from user
-	void requestFileList( const QString& nick );
+	///@param info data of user that the list is requested from
+	void requestFileList( const UserInfo& info );
 	
 	/// Generates color mathcing current pallette
 	void generateColors();

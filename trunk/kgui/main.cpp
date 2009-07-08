@@ -78,12 +78,6 @@ int main(int argc, char** argv )
 	appIcon.addFile(":/resources/logo16.png", QSize(16, 16 ) );
 	app.setWindowIcon( appIcon );
 
-	KRufusDc::MainWindow* pWin = new KRufusDc::MainWindow();
-	
-	KRufusDc::ClientThread clientThread( pWin );
-	
-	pWin->show();
-
 	try
 	{
 		// Start the DC++ client core
@@ -91,6 +85,13 @@ int main(int argc, char** argv )
 		dcpp::TimerManager::getInstance()->start();
 		::signal(SIGPIPE, SIG_IGN);
 		
+		// window must be started after dcpp is initialized
+		KRufusDc::MainWindow* pWin = new KRufusDc::MainWindow();
+		
+		KRufusDc::ClientThread clientThread( pWin );
+		
+		pWin->show();
+
 		clientThread.start();
 		
 		KRufusDc::ClientThread::invoke("startListening");

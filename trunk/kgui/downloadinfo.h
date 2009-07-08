@@ -77,6 +77,12 @@ public:
 		return _transferred;
 	}
 
+	bool isFileList() const
+	{
+		return _isFileList;
+	}
+	
+
 private:
 	State _state;            ///< Transfer state (download specific)
 	
@@ -85,6 +91,7 @@ private:
 	QString _path;           ///< File path
 	int64_t _size;           ///< File size
 	int64_t _transferred;    ///< Transferred bytes
+	bool    _isFileList;     ///< If tis is file list transfer
 
 };
 

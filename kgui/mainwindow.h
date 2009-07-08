@@ -72,6 +72,10 @@ private Q_SLOTS:
 	/// Connect to hub requested
 	void connectToHub( const QString& str, const QString& encoding );
 
+	/// File list downloaded
+	///@param path path to file list file
+	void fileListDownloaded( const QString& path );
+
 protected: // event handlers
 
 	/// Close event handlers - hides window instead of closing it

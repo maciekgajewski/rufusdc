@@ -50,13 +50,16 @@ public:
 	virtual ~FileListWidget();
 	
 	/**
-	 * @brief Set's file list.
-	 * Parses XML data contained within the file list
-	 * @param  pFileList file list pointer
-	 * @exception std::logic_error if can't parse xml
+	 * @brief Loads file list file
+	 * Loads and parses XML data contained within the file list.
+	 * If file is .bz2, is is decompressed.
+	 * @param  path file path
 	 */
-	void setFileList( /*boost::shared_ptr< RufusDc::FileList > pFileList*/ );
+	void loadFromFile( const QString& path );
 
+	/// Loads the list from XML data
+	void loadFromXML( const QByteArray& xml );
+	
 private:
 
 	/// Columns
@@ -85,9 +88,6 @@ private:
 	/// Inside tree widget
 	QTreeWidget* _pTree;
 
-	/// The file list
-	boost::shared_ptr< RufusDc::FileList > _pFileList;
-	
 	/// Creates directory item from XML element
 	QTreeWidgetItem* createDirectoryItem( const QDomElement& element, const QString& parentPath );
 	
@@ -96,6 +96,9 @@ private:
 	
 	/// Opens context menu
 	virtual void contextMenuEvent( QContextMenuEvent* pEvent );
+	
+	/// Decompresses BZ2
+	static QByteArray decompressBZ2( const QByteArray& compressed );
 };
 
 }

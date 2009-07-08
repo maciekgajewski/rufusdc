@@ -156,6 +156,16 @@ void MainWindow::connectToHub( const QString& addr, const QString& encoding )
 }
 
 // ============================================================================
+// File list downloaded
+void MainWindow::fileListDownloaded( const QString& path )
+{
+	FileListWidget* pWidget = new FileListWidget( this );
+	pWidget->loadFromFile( path );
+	int idx = _pTabs->addTab( pWidget );
+	_pTabs->setCurrentIndex( idx );
+}
+
+// ============================================================================
 // Initializes GUI elements
 void MainWindow::initGui()
 {
@@ -194,10 +204,8 @@ void MainWindow::on(dcpp::QueueManagerListener::Finished, dcpp::QueueItem* qi, c
 		QString listName = QString::fromUtf8( qi->getListName().c_str() );
 		
 		qDebug("list downloaded: %s", qi->getListName().c_str() );
-
-		//typedef Func4<MainWindow, UserPtr, string, string, bool> F4;
-		//F4 *func = new F4(this, &MainWindow::showShareBrowser_gui, user, listName, dir, TRUE);
-		//WulforManager::get()->dispatchGuiFunc(func);
+		
+		invoke("fileListDownloaded", Q_ARG( QString, listName ) );
 	}
 }
 

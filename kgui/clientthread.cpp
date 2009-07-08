@@ -22,6 +22,7 @@
 #include <dcpp/ClientManager.h>
 #include <dcpp/HubEntry.h>
 #include <dcpp/ConnectionManager.h>
+#include <dcpp/QueueManager.h>
 
 // local
 #include "mainwindow.h"
@@ -150,6 +151,28 @@ void ClientThread::autoConnect()
 			QString encoding = hub->getEncoding().c_str();
 			
 			_pMainWindow->invoke("connectToHub", Q_ARG( QString, addr), Q_ARG( QString, encoding ) );
+		}
+	}
+}
+
+// ============================================================================
+// Downloads file list
+void ClientThread::downloadFileList( const QString& cid )
+{
+	dcpp::UserPtr user = dcpp::ClientManager::getInstance()->findUser(dcpp::CID( cid.toStdString() ));
+			
+	if (user)
+	{
+		if (user == dcpp::ClientManager::getInstance()->getMe())
+		{
+			// Don't download file list, open locally instead
+			// TODO
+			qDebug("TODO: open own file list");
+		}
+		else
+		{
+			qDebug("downloadg file list of %s", qPrintable( cid ) );
+			dcpp::QueueManager::getInstance()->addList(user, std::string(), dcpp::QueueItem::FLAG_CLIENT_VIEW);
 		}
 	}
 }

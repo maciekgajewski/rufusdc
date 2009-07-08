@@ -25,6 +25,10 @@
 // KDE
 #include <KMainWindow>
 
+// dcpp
+#include <dcpp/stdinc.h>
+#include <dcpp/DCPlusPlus.h>
+#include <dcpp/QueueManager.h>
 
 namespace KRufusDc
 {
@@ -38,6 +42,7 @@ namespace KRufusDc
 * @author Maciek Gajewski <maciej.gajewski0@gmail.com>
 */
 class MainWindow : public KMainWindow
+	, public dcpp::QueueManagerListener
 {
 	Q_OBJECT
 public:
@@ -76,6 +81,11 @@ protected: // KMainWindow
 
 	/// Asks wheter window can be closed
 	virtual bool queryClose();
+
+protected: // DC++ event handlers
+
+	// QueueManager
+	virtual void on(dcpp::QueueManagerListener::Finished, dcpp::QueueItem* qi, const std::string&, int64_t size) throw();
 
 private:
 	

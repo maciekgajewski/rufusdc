@@ -37,6 +37,7 @@ UserInfo::UserInfo()
 
 // ============================================================================
 // Copy Constructor
+/* delete if not needed
 UserInfo::UserInfo( const UserInfo& src )
 	: _nick(src._nick)
 	, _description(src._description)
@@ -44,8 +45,10 @@ UserInfo::UserInfo( const UserInfo& src )
 	, _status(src._status)
 	, _sharesize(src._sharesize)
 	, _email(src._email)
+	, _cid(src._cid)
 {
 }
+*/
 
 // ============================================================================
 // Destructor
@@ -65,6 +68,7 @@ void UserInfo::fromDcppIdentity( const dcpp::OnlineUser& user )
 	_sharesize	= identity.getBytesShared();
 	_email		= QString::fromUtf8( identity.getEmail().c_str() );
 	_description	= QString::fromUtf8( identity.getDescription().c_str() );
+	_cid		= QString::fromStdString( user.getUser()->getCID().toBase32() );
 	
 }
 

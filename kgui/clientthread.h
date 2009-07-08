@@ -61,6 +61,10 @@ private Q_SLOTS: // call these via 'invoke'
 	
 	/// Auto-connects to favorite hubs
 	void autoConnect();
+	
+	/// Download user file list
+	///@param CID user's cid, base32 encoded
+	void downloadFileList( const QString& CID );
 
 private:
 

@@ -136,6 +136,17 @@ void TransferWidget::downloadAdded( const DownloadInfo& info )
 }
 
 // ============================================================================
+// Download removed
+void TransferWidget::downloadRemoved( const DownloadInfo& info )
+{
+	// find appropriate item
+	QTreeWidgetItem* pItem = findDownload( info.TTH() );
+
+	Q_ASSERT( pItem );
+	delete pItem; // have no mercy!
+}
+
+// ============================================================================
 // Find download
 QTreeWidgetItem* TransferWidget::findDownload( const QString& TTH )
 {
@@ -343,11 +354,18 @@ void TransferWidget::updateDownloadItem( QTreeWidgetItem* pItem, const DownloadI
 		pParent->addChild( pItem );
 	}
 	
-	QString baseName = QFileInfo( info.path() ).fileName();
-	
-	// file name
-	pItem->setText( COLUMN_NAME, baseName );
-	pItem->setToolTip( COLUMN_NAME, info.path() );
+	if ( info.isFileList() )
+	{
+		pItem->setText( COLUMN_NAME, i18n("File list") ); // TODO add user name
+	}
+	else
+	{
+		QString baseName = QFileInfo( info.path() ).fileName();
+		
+		// file name
+		pItem->setText( COLUMN_NAME, baseName );
+		pItem->setToolTip( COLUMN_NAME, info.path() );
+	}
 	
 	// icon
 	pItem->setIcon( COLUMN_NAME, icon );
@@ -570,7 +588,11 @@ void TransferWidget::on(dcpp::QueueManagerListener::Finished, dcpp::QueueItem* q
 
 void TransferWidget::on(dcpp::QueueManagerListener::Removed, dcpp::QueueItem* qi) throw()
 {
-	qDebug("TransferWidget: QueueManagerListener::Removed");
+	//qDebug("TransferWidget: QueueManagerListener::Removed");
+	DownloadInfo info;
+	info.fromQueueItem( qi );
+	
+	invoke( "downloadRemoved", Q_ARG( DownloadInfo, info ) );	
 }
 
 // UploadManager

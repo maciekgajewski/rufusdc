@@ -35,6 +35,8 @@
 
 // local
 #include "utils.h"
+#include "clientthread.h"
+
 #include "hubwidget.h"
 
 
@@ -168,12 +170,14 @@ void HubWidget::initUsersWidget()
 // Context menu
 void HubWidget::usersContextMenu( const QPoint & pos )
 {
-	if ( pUsers->selectionModel() && pUsers->selectionModel()->hasSelection() )
+	QTreeWidgetItem* pCurrentItem = pUsers->currentItem();
+	if ( pCurrentItem )
 	{
-		// get selection
-		int row = pUsers->selectionModel()->currentIndex().row();
-		/* TODO revisit
-		QString nick = _userModel.getUserInfo( row ).nick();
+		// get user info
+		UserInfo info = pCurrentItem->data( 0, ROLE_DATA).value< UserInfo >();
+		
+		
+		QString nick = info.nick();
 			
 		// init menu
 		QAction actionFileList( KIcon("view-list-tree"), i18n("Request file list"), this );
@@ -187,18 +191,16 @@ void HubWidget::usersContextMenu( const QPoint & pos )
 		// handle selection
 		if ( pRes == & actionFileList )
 		{
-			requestFileList( nick );
+			requestFileList( info );
 		}
-		*/
 	}
 }
 
 // ============================================================================
 // Request file list
-void HubWidget::requestFileList( const QString& /*nick*/)
+void HubWidget::requestFileList( const UserInfo& info )
 {
-	//_pHub->requestFileList( nick );
-	// TODO love me or leave me
+	ClientThread::invoke( "downloadFileList", Q_ARG( QString, info.cid() ) );
 }
 
 // ============================================================================
@@ -278,6 +280,8 @@ void HubWidget::userUpdated( const UserInfo& info )
 			, QStringList() << info.nick() << sizeToString( info.sharesize() ) << info.connection() << info.description()
 			);
 		pItem->setIcon( 0, KIcon("user-online") );
+		
+		pItem->setData( 0, ROLE_DATA, QVariant::fromValue( info ) );
 	}
 	// modify existsing
 	else
@@ -289,6 +293,8 @@ void HubWidget::userUpdated( const UserInfo& info )
 		pItem->setText( COLUMN_SHARED, QString::number(info.sharesize()) );
 		pItem->setText( COLUMN_CONECTION, info.connection() );
 		pItem->setText( COLUMN_DESCRIPTION, info.description() );
+		
+		pItem->setData( 0, ROLE_DATA, QVariant::fromValue( info ) );
 	}
 }
 

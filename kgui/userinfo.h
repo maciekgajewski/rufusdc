@@ -39,7 +39,7 @@ class UserInfo
 
 public:
 	UserInfo();
-	UserInfo( const UserInfo& src );
+	//UserInfo( const UserInfo& src ); // TODO delete if not needed
 	~UserInfo();
 	
 	/// Fills in user info with dcpp's user indentity
@@ -110,6 +110,12 @@ public:
 	{
 		return _email;
 	}
+
+	QString cid() const
+	{
+		return _cid;
+	}
+	
 private:
 
 	QString  _nick;
@@ -118,6 +124,7 @@ private:
 	uint8_t  _status;
 	uint64_t _sharesize;
 	QString  _email;
+	QString  _cid;
 };
 
 }

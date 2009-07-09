@@ -19,6 +19,8 @@ set(
 	clientthread.cpp
 	transferinfo.cpp
 	downloadinfo.cpp
+	actionfactory.cpp
+	smartsorttreeitem.cpp
 )
 
 qt4_add_resources( SOURCES resources.qrc )

@@ -31,6 +31,9 @@
 #include "transferinfo.h"
 #include "downloadinfo.h"
 #include "utils.h"
+#include "smartsorttreeitem.h"
+#include "actionfactory.h"
+#include "userinfo.h"
 
 #include "transferwidget.h"
 
@@ -44,7 +47,7 @@ public:
 	int value;
 	
 	/// Constructor
-	FixedPosItem( QTreeWidget* pWidget ) : QTreeWidgetItem( pWidget ), value(0) {}
+	FixedPosItem( QTreeWidget* pWidget, int type ) : QTreeWidgetItem( pWidget, type ), value(0) {}
 	
 	/// Comparison operator
 	virtual bool operator< ( const QTreeWidgetItem & other ) const
@@ -77,39 +80,41 @@ TransferWidget::TransferWidget(QWidget* parent)
 	dcpp::QueueManager::getInstance()->addListener(this);
 	dcpp::DownloadManager::getInstance()->addListener(this);
 	dcpp::UploadManager::getInstance()->addListener(this);
-	dcpp::ConnectionManager::getInstance()->addListener(this);
 	
 	// init tree
 	
 	// create top level items, for downloads and uploads
-	_pDownloadsItem = new FixedPosItem( pTree );
+	_pDownloadsItem = new FixedPosItem( pTree, TYPE_FIXED );
 	_pDownloadsItem->setText( COLUMN_NAME, i18n("Downloads") );
 	_pDownloadsItem->setIcon( COLUMN_NAME, KIcon("folder-green") );
 	_pDownloadsItem->setFirstColumnSpanned ( true );
 	_pDownloadsItem->setExpanded( true );
 	_pDownloadsItem->value = 0;
 	
-	_pInactiveDownloadsItem = new FixedPosItem( pTree );
+	_pInactiveDownloadsItem = new FixedPosItem( pTree, TYPE_FIXED );
 	_pInactiveDownloadsItem->setText( COLUMN_NAME, i18n("Inactive downloads") );
 	_pInactiveDownloadsItem->setIcon( COLUMN_NAME, KIcon("folder-grey") );
 	_pInactiveDownloadsItem->setFirstColumnSpanned ( true );
 	_pInactiveDownloadsItem->setExpanded( true );
 	_pInactiveDownloadsItem->value = 1;
 	
-	_pFinishedDownloadsItem = new FixedPosItem( pTree );
+	_pFinishedDownloadsItem = new FixedPosItem( pTree, TYPE_FIXED );
 	_pFinishedDownloadsItem->setText( COLUMN_NAME, i18n("Finished downloads") );
 	_pFinishedDownloadsItem->setIcon( COLUMN_NAME, KIcon("folder-blue") );
 	_pFinishedDownloadsItem->setFirstColumnSpanned ( true );
 	_pFinishedDownloadsItem->setExpanded( true );
 	_pFinishedDownloadsItem->value = 2;
 	
-	_pUploadsItem = new FixedPosItem( pTree );
+	_pUploadsItem = new FixedPosItem( pTree, TYPE_FIXED );
 	_pUploadsItem->setText( COLUMN_NAME, i18n("Uploads") );
 	_pUploadsItem->setIcon( COLUMN_NAME, KIcon("folder-red") );
 	_pUploadsItem->setFirstColumnSpanned ( true );
 	_pUploadsItem->setExpanded( true );
 	_pUploadsItem->value = 3;
 	
+	connect( pTree, SIGNAL(customContextMenuRequested(const QPoint &)), SLOT(treeContextMenu(const QPoint &) ) );
+
+	// init content
 	initDownloads();
 	
 }
@@ -121,7 +126,6 @@ TransferWidget::~TransferWidget()
 	dcpp::QueueManager::getInstance()->removeListener(this);
 	dcpp::DownloadManager::getInstance()->removeListener(this);
 	dcpp::UploadManager::getInstance()->removeListener(this);
-	dcpp::ConnectionManager::getInstance()->removeListener(this);
 }
 
 // ============================================================================
@@ -131,7 +135,7 @@ void TransferWidget::downloadAdded( const DownloadInfo& info )
 	//qDebug("Dowload added, file: %s", qPrintable( info.path() ) );
 	
 	// TODO make sure there is no such download already
-	QTreeWidgetItem* pItem = new QTreeWidgetItem();
+	SmartSortTreeItem* pItem = new SmartSortTreeItem( TYPE_DOWNLOAD );
 	updateDownloadItem( pItem, info );
 }
 
@@ -140,7 +144,7 @@ void TransferWidget::downloadAdded( const DownloadInfo& info )
 void TransferWidget::downloadRemoved( const DownloadInfo& info )
 {
 	// find appropriate item
-	QTreeWidgetItem* pItem = findDownload( info.TTH() );
+	SmartSortTreeItem* pItem = findDownload( info.TTH() );
 
 	Q_ASSERT( pItem );
 	delete pItem; // have no mercy!
@@ -148,7 +152,7 @@ void TransferWidget::downloadRemoved( const DownloadInfo& info )
 
 // ============================================================================
 // Find download
-QTreeWidgetItem* TransferWidget::findDownload( const QString& TTH )
+SmartSortTreeItem* TransferWidget::findDownload( const QString& TTH )
 {
 	// create list of all download items
 	QList<QTreeWidgetItem *> items;
@@ -165,12 +169,12 @@ QTreeWidgetItem* TransferWidget::findDownload( const QString& TTH )
 	}
 	
 	// find the one
-	Q_FOREACH( QTreeWidgetItem* item, items )
+	Q_FOREACH( QTreeWidgetItem* pItem, items )
 	{
-		QString itemsTTH = item->text( COLUMN_TTH );
+		QString itemsTTH = pItem->text( COLUMN_TTH );
 		if ( itemsTTH == TTH )
 		{
-			return item;
+			return dynamic_cast< SmartSortTreeItem* >( pItem );
 		}
 	}
 	
@@ -182,21 +186,21 @@ QTreeWidgetItem* TransferWidget::findDownload( const QString& TTH )
 void TransferWidget::downloadTransferUpdated( const TransferInfo& info )
 {
 	// find parent item
-	QTreeWidgetItem* pParent = findDownload( info.TTH() );
+	SmartSortTreeItem* pParent = findDownload( info.TTH() );
 	
 	Q_ASSERT( pParent );
 	
 	// find download
-	QTreeWidgetItem* pItem = findDownloadTransfer( pParent, info.CID() );
+	SmartSortTreeItem* pItem = findDownloadTransfer( pParent, info.CID() );
 	if ( !pItem )
 	{
-		pItem = new QTreeWidgetItem( pParent );
+		pItem = new SmartSortTreeItem( pParent, TYPE_USER );
 	}
 
 	Q_ASSERT( pItem );
 	
 	// create download
-	updateDownloadTransferItem( pItem, info );
+	updateTransferItem( pItem, info );
 	
 	updateDownloadFromTransfers( pParent );
 }
@@ -206,12 +210,12 @@ void TransferWidget::downloadTransferUpdated( const TransferInfo& info )
 void TransferWidget::downloadTransferRemoved( const TransferInfo& info )
 {
 	// find parent item
-	QTreeWidgetItem* pParent = findDownload( info.TTH() );
+	SmartSortTreeItem* pParent = findDownload( info.TTH() );
 	
 	Q_ASSERT( pParent );
 	
 	// find download
-	QTreeWidgetItem* pItem = findDownloadTransfer( pParent, info.CID() );
+	SmartSortTreeItem* pItem = findDownloadTransfer( pParent, info.CID() );
 	Q_ASSERT( pItem );
 	
 	delete pItem; // goodbye!
@@ -219,7 +223,7 @@ void TransferWidget::downloadTransferRemoved( const TransferInfo& info )
 
 // ============================================================================
 // Update download item from transfer items
-void TransferWidget::updateDownloadFromTransfers( QTreeWidgetItem* pItem )
+void TransferWidget::updateDownloadFromTransfers( SmartSortTreeItem* pItem )
 {
 	int childCount = pItem->childCount();
 	double speed = 0;
@@ -242,14 +246,16 @@ void TransferWidget::updateDownloadFromTransfers( QTreeWidgetItem* pItem )
 	
 	// speed
 	pItem->setText( COLUMN_SPEED, speedToString( speed ) );
+	pItem->setValue( COLUMN_SPEED, speed );
 	
 	// time remaining
 	pItem->setText( COLUMN_TIME_LEFT, timeToString( time ) );
+	pItem->setValue( COLUMN_TIME_LEFT, double( time ) );
 }
 
 // ============================================================================
 // Find download transfer
-QTreeWidgetItem* TransferWidget::findDownloadTransfer( QTreeWidgetItem* pParent, const QString& CID )
+SmartSortTreeItem* TransferWidget::findDownloadTransfer( SmartSortTreeItem* pParent, const QString& CID )
 {
 	Q_ASSERT( pParent );
 	
@@ -261,7 +267,7 @@ QTreeWidgetItem* TransferWidget::findDownloadTransfer( QTreeWidgetItem* pParent,
 		
 		if ( info.CID() == CID )
 		{
-			return pItem;
+			return dynamic_cast<SmartSortTreeItem*>( pItem );
 		}
 	}
 	
@@ -270,21 +276,24 @@ QTreeWidgetItem* TransferWidget::findDownloadTransfer( QTreeWidgetItem* pParent,
 
 // ============================================================================
 // Update download transfer
-void TransferWidget::updateDownloadTransferItem( QTreeWidgetItem* pItem, const TransferInfo& info )
+void TransferWidget::updateTransferItem( SmartSortTreeItem* pItem, const TransferInfo& info )
 {
 	// name/icon/data
 	pItem->setText( COLUMN_NAME, info.userNick() );
 	pItem->setIcon( COLUMN_NAME, KIcon("user-identity") );
+	pItem->setValue( COLUMN_NAME, info.userNick().toLower() ); // to get case-insensitive search
 	pItem->setData( 0, ROLE_DATA, QVariant::fromValue<TransferInfo>( info ) );
 	
 	// progress
 	QString status = info.status();
 	QString progress;
+	double progresValue = 100;;
 	if ( status.isEmpty() )
 	{
 		int64_t size = info.size();
 		int64_t downloaded = info.transferred();
 		double percent = 100.0*(double(downloaded)/double(size));
+		progresValue = percent;
 		progress = QString("%1% (%2 / %3)")
 			.arg( percent, 0, 'f', 2 )
 			.arg( sizeToString( downloaded ) )
@@ -295,13 +304,19 @@ void TransferWidget::updateDownloadTransferItem( QTreeWidgetItem* pItem, const T
 		progress = status;
 	}
 	pItem->setText( COLUMN_PROGRESS, progress );
+	pItem->setValue( COLUMN_PROGRESS, progresValue );
 	
 	// speed
 	QString speed = speedToString( info.averageSpeed() );
 	pItem->setText( COLUMN_SPEED, speed );
+	pItem->setValue( COLUMN_SPEED, info.averageSpeed() );
 	
 	// remaining time TODO format properly
 	pItem->setText( COLUMN_TIME_LEFT, timeToString( info.secondsLeft() ) );
+	pItem->setValue( COLUMN_TIME_LEFT, double(info.secondsLeft()) );
+	
+	// aux
+	pItem->setData( 0, ROLE_DATA, QVariant::fromValue( info ) );
 }
 
 // ============================================================================
@@ -309,7 +324,7 @@ void TransferWidget::updateDownloadTransferItem( QTreeWidgetItem* pItem, const T
 void TransferWidget::downloadUpdated( const DownloadInfo& info )
 {
 	// find appropriate item
-	QTreeWidgetItem* pItem = findDownload( info.TTH() );
+	SmartSortTreeItem* pItem = findDownload( info.TTH() );
 	
 	Q_ASSERT( pItem );
 	
@@ -318,7 +333,7 @@ void TransferWidget::downloadUpdated( const DownloadInfo& info )
 
 // ============================================================================
 // update down
-void TransferWidget::updateDownloadItem( QTreeWidgetItem* pItem, const DownloadInfo& info )
+void TransferWidget::updateDownloadItem( SmartSortTreeItem* pItem, const DownloadInfo& info )
 {
 	// get state info
 	QTreeWidgetItem* pParent = NULL;
@@ -328,14 +343,20 @@ void TransferWidget::updateDownloadItem( QTreeWidgetItem* pItem, const DownloadI
 		pParent = _pFinishedDownloadsItem;
 		icon = KIcon("task-complete");
 		pItem->setText( COLUMN_TIME_LEFT, "" );
+		pItem->setValue( COLUMN_TIME_LEFT, 0.0 );
+		
 		pItem->setText( COLUMN_SPEED, "" );
+		pItem->setValue( COLUMN_SPEED, 0.0 );
 	}
 	else if ( info.state() == DownloadInfo::WAITING )
 	{
 		pParent = _pInactiveDownloadsItem;
 		icon = KIcon("user-away");
 		pItem->setText( COLUMN_TIME_LEFT, "" );
+		pItem->setValue( COLUMN_TIME_LEFT, 0.0 );
+		
 		pItem->setText( COLUMN_SPEED, "" );
+		pItem->setValue( COLUMN_SPEED, 0.0 );
 	}
 	else
 	{
@@ -354,16 +375,18 @@ void TransferWidget::updateDownloadItem( QTreeWidgetItem* pItem, const DownloadI
 		pParent->addChild( pItem );
 	}
 	
+	// file name
 	if ( info.isFileList() )
 	{
 		pItem->setText( COLUMN_NAME, i18n("File list") ); // TODO add user name
+		pItem->setValue( COLUMN_NAME, "" );
 	}
 	else
 	{
 		QString baseName = QFileInfo( info.path() ).fileName();
 		
-		// file name
 		pItem->setText( COLUMN_NAME, baseName );
+		pItem->setValue( COLUMN_NAME, baseName.toLower() );
 		pItem->setToolTip( COLUMN_NAME, info.path() );
 	}
 	
@@ -374,6 +397,7 @@ void TransferWidget::updateDownloadItem( QTreeWidgetItem* pItem, const DownloadI
 	if ( info.state() == DownloadInfo::FINISHED )
 	{
 		pItem->setText( COLUMN_PROGRESS, i18n("Finished") );
+		pItem->setValue( COLUMN_PROGRESS, 100.0 );
 	}
 	else
 	{
@@ -386,6 +410,7 @@ void TransferWidget::updateDownloadItem( QTreeWidgetItem* pItem, const DownloadI
 			.arg( sizeToString( size ) );
 			
 		pItem->setText( COLUMN_PROGRESS, progress );
+		pItem->setValue( COLUMN_PROGRESS, percent );
 	}
 	
 	// TTH
@@ -443,11 +468,11 @@ void TransferWidget::initDownloads()
 // upload updated
 void TransferWidget::uploadUpdated( const TransferInfo& info )
 {
-	QTreeWidgetItem* pItem = findUpload( info );
+	SmartSortTreeItem* pItem = findUpload( info );
 	
 	if ( !pItem )
 	{
-		pItem = new QTreeWidgetItem( _pUploadsItem );
+		pItem = new SmartSortTreeItem( _pUploadsItem );
 	}
 	
 	updateUploadItem( pItem, info );
@@ -458,7 +483,7 @@ void TransferWidget::uploadUpdated( const TransferInfo& info )
 // upload removed
 void TransferWidget::uploadRemoved( const TransferInfo& info )
 {
-	QTreeWidgetItem* pItem = findUpload( info );
+	SmartSortTreeItem* pItem = findUpload( info );
 	
 	if ( pItem )
 	{
@@ -468,10 +493,10 @@ void TransferWidget::uploadRemoved( const TransferInfo& info )
 
 // ============================================================================
 // Update upload item
-void TransferWidget::updateUploadItem( QTreeWidgetItem* pItem, const TransferInfo& info )
+void TransferWidget::updateUploadItem( SmartSortTreeItem* pItem, const TransferInfo& info )
 {
 	// re-use download code
-	updateDownloadTransferItem( pItem, info );
+	updateTransferItem( pItem, info );
 	
 	// fit file name and user nick in first column
 	QString fileName = QFileInfo( info.path() ).fileName();
@@ -481,7 +506,7 @@ void TransferWidget::updateUploadItem( QTreeWidgetItem* pItem, const TransferInf
 
 // ============================================================================
 // find upload item
-QTreeWidgetItem* TransferWidget::findUpload( const TransferInfo& info )
+SmartSortTreeItem* TransferWidget::findUpload( const TransferInfo& info )
 {
 	int childCount = _pUploadsItem->childCount();
 	for ( int i = 0; i < childCount; ++i )
@@ -491,7 +516,7 @@ QTreeWidgetItem* TransferWidget::findUpload( const TransferInfo& info )
 		
 		if ( info.CID() == info.CID() && info.TTH() == info.TTH() )
 		{
-			return pItem;
+			return dynamic_cast<SmartSortTreeItem*>( pItem );
 		}
 	}
 
@@ -548,32 +573,6 @@ void TransferWidget::on(dcpp::DownloadManagerListener::Failed, dcpp::Download* d
 	TransferInfo info;
 	info.fromDcppDownload( dl );
 	invoke("downloadTransferRemoved", Q_ARG( TransferInfo, info ) );
-}
-
-// ConnectionManager
-void TransferWidget::on(dcpp::ConnectionManagerListener::Added, dcpp::ConnectionQueueItem* cqi) throw()
-{
-	qDebug("TransferWidget: ConnectionManagerListener::Added");
-}
-
-void TransferWidget::on(dcpp::ConnectionManagerListener::Connected, dcpp::ConnectionQueueItem* cqi) throw()
-{
-	qDebug("TransferWidget: ConnectionManagerListener::Connected");
-}
-
-void TransferWidget::on(dcpp::ConnectionManagerListener::Removed, dcpp::ConnectionQueueItem* cqi) throw()
-{
-	qDebug("TransferWidget: ConnectionManagerListener::Removed");
-}
-
-void TransferWidget::on(dcpp::ConnectionManagerListener::Failed, dcpp::ConnectionQueueItem* cqi, const std::string&) throw()
-{
-	qDebug("TransferWidget: ConnectionManagerListener::Failed");
-}
-
-void TransferWidget::on(dcpp::ConnectionManagerListener::StatusChanged, dcpp::ConnectionQueueItem* cqi) throw()
-{
-	qDebug("TransferWidget: ConnectionManagerListener::StatusChanged");
 }
 
 // QueueManager
@@ -670,6 +669,58 @@ void TransferWidget::on(dcpp::QueueManagerListener::StatusUpdated, dcpp::QueueIt
 	invoke( "downloadUpdated", Q_ARG( DownloadInfo, info ) );	
 }
 
+// ============================================================================
+// Tree context menu
+void TransferWidget::treeContextMenu(const QPoint& point )
+{
+	// get current item
+	QTreeWidgetItem* pCurrentItem = pTree->currentItem();
+	if ( ! pCurrentItem )
+	{
+		return; // do nothing
+	}
+	
+	// check item type
+	int type = pCurrentItem->type();
+	
+	// fixed item
+	if ( type == TYPE_FIXED )
+	{
+		// do nothing
+		return;
+	}
+	// user item
+	else if ( type = TYPE_USER )
+	{
+		// get user info
+		TransferInfo transfer = pCurrentItem->data( 0, ROLE_DATA).value< TransferInfo >();
+		UserInfo info;
+		info.fromTransferInfo( transfer );
+		QString nick = info.nick();
+			
+		// init menu
+		KMenu menu( this );
+		
+		// title
+		menu.addTitle( nick );
+		
+		// actions
+		menu.addAction( ActionFactory::createUserAction( &menu, info, ActionFactory::CopyNick ) );
+		menu.addAction( ActionFactory::createUserAction( &menu, info, ActionFactory::GetFileList ) );
+		menu.addAction( ActionFactory::createUserAction( &menu, info, ActionFactory::MatchQueue ) );
+		menu.addAction( ActionFactory::createUserAction( &menu, info, ActionFactory::GrantSlot ) );
+		menu.addAction(  ActionFactory::createUserAction( &menu, info, ActionFactory::RemoveUserFromQueue ) );
+		
+		// go!
+		QAction* pRes = menu.exec( pTree->mapToGlobal( point ) );
+		if ( pRes )
+		{
+			pRes->trigger();
+		}
+		
+	}
+
+}
 
 } // ns
 

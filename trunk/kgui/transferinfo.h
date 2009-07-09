@@ -115,9 +115,6 @@ public: // accessors
 	{
 		return _CID;
 	}
-	
-	
-	
 
 private: // method
 

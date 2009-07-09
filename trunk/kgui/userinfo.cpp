@@ -24,6 +24,7 @@
 #include <dcpp/Client.h>
 
 // local
+#include "transferinfo.h"
 #include "userinfo.h"
 
 namespace KRufusDc
@@ -71,6 +72,15 @@ void UserInfo::fromDcppIdentity( const dcpp::OnlineUser& user )
 	_cid		= QString::fromStdString( user.getUser()->getCID().toBase32() );
 	
 }
+
+// ============================================================================
+// From transfer info
+void UserInfo::fromTransferInfo( const TransferInfo& transfer )
+{
+	_nick = transfer.userNick();
+	_cid = transfer.CID();
+}
+	
 
 
 }

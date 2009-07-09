@@ -117,11 +117,6 @@ private: // types
 
 private: // methods
 
-
-	/// Request file list from user
-	///@param info data of user that the list is requested from
-	void requestFileList( const UserInfo& info );
-	
 	/// Generates color mathcing current pallette
 	void generateColors();
 	
@@ -131,10 +126,6 @@ private: // methods
 	/// Fromats incoming message, inserting html tags
 	QString formatMessage( const QString& msg );
 	
-	/// Returns codec for hub
-	/// IF hub i null, or codec can not be found, returns codec for UTF-8
-	static QTextCodec* codecForHub( const dcpp::Client* pHub );
-
 private: // actions
 	
 	QAction* _pActionFileList;

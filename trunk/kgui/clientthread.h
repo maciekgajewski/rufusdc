@@ -1,4 +1,6 @@
 // Copyright (C) 2009 Maciek Gajewski <maciej.gajewski0@gmail.com>
+// Uses code from Linux DC++, Copyright © 2004-2008 Jens Oknelid, paskharen@gmail.com 
+//
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
 #ifndef CLIENTTHREAD_H
 #define CLIENTTHREAD_H
 
@@ -63,8 +66,20 @@ private Q_SLOTS: // call these via 'invoke'
 	void autoConnect();
 	
 	/// Download user file list
-	///@param CID user's cid, base32 encoded
-	void downloadFileList( const QString& CID );
+	///@param cid user's cid, base32 encoded
+	void downloadFileList( const QString& cid );
+
+	/// Matches queue with users file list
+	///@param cid user's cid, base32 encoded
+	void matchQueue( const QString& cid );
+	
+	/// Grants extraslot to user
+	///@param cid user's cid, base32 encoded
+	void grantSlot( const QString& cid );
+	
+	/// Grants extraslot to user
+	///@param cid user's cid, base32 encoded
+	void removeUserFromQueue( const QString& cid );
 
 private:
 

@@ -1,4 +1,5 @@
 // Copyright (C) 2009 Maciek Gajewski <maciej.gajewski0@gmail.com>
+// Uses code from Linux DC++, Copyright © 2004-2008 Jens Oknelid, paskharen@gmail.com 
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -23,6 +24,7 @@
 #include <dcpp/HubEntry.h>
 #include <dcpp/ConnectionManager.h>
 #include <dcpp/QueueManager.h>
+#include <dcpp/UploadManager.h>
 
 // local
 #include "mainwindow.h"
@@ -171,9 +173,52 @@ void ClientThread::downloadFileList( const QString& cid )
 		}
 		else
 		{
-			qDebug("downloadg file list of %s", qPrintable( cid ) );
 			dcpp::QueueManager::getInstance()->addList(user, std::string(), dcpp::QueueItem::FLAG_CLIENT_VIEW);
 		}
+	}
+}
+
+// ============================================================================
+// Match queue
+void ClientThread::matchQueue( const QString& cid )
+{
+	dcpp::UserPtr user = dcpp::ClientManager::getInstance()->findUser(dcpp::CID( cid.toStdString() ));
+			
+	if (user)
+	{
+		if (user == dcpp::ClientManager::getInstance()->getMe())
+		{
+			// Don't download file list, open locally instead
+			// TODO
+			qDebug("TODO: open own file list");
+		}
+		else
+		{
+			dcpp::QueueManager::getInstance()->addList(user, std::string(), dcpp::QueueItem::FLAG_MATCH_QUEUE);
+			// empty string above is a hub hint
+		}
+	}
+}
+
+// ============================================================================
+// Grant extra slot
+void ClientThread::grantSlot( const QString& cid )
+{
+	dcpp::UserPtr user = dcpp::ClientManager::getInstance()->findUser(dcpp::CID( cid.toStdString() ));
+	if (user)
+	{
+		dcpp::UploadManager::getInstance()->reserveSlot( user, std::string() ); // empty string is a hub hint
+	}
+}
+
+// ============================================================================
+// Removes user from queue
+void ClientThread::removeUserFromQueue( const QString& cid )
+{
+	dcpp::UserPtr user = dcpp::ClientManager::getInstance()->findUser(dcpp::CID( cid.toStdString() ));
+	if (user)
+	{
+		dcpp::QueueManager::getInstance()->removeSource(user, dcpp::QueueItem::Source::FLAG_REMOVED);
 	}
 }
 

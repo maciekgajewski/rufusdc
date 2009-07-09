@@ -28,6 +28,8 @@ namespace dcpp
 namespace KRufusDc
 {
 
+class TransferInfo;
+
 /**
 * @brief Structure containing user information
 * Used to transform user information across
@@ -44,6 +46,9 @@ public:
 	
 	/// Fills in user info with dcpp's user indentity
 	void fromDcppIdentity( const dcpp::OnlineUser& user );
+	
+	/// Creates sekeleton user info from transfer info
+	void fromTransferInfo( const TransferInfo& transfer );
 	
 	void setNick( const QString& value )
 	{

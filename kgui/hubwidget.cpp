@@ -17,6 +17,7 @@
 // Qt
 #include <QAction>
 #include <QTextCodec>
+#include <QClipboard>
 
 // KDE
 #include <KMenu>
@@ -36,11 +37,13 @@
 // local
 #include "utils.h"
 #include "clientthread.h"
+#include "actionfactory.h"
+#include "smartsorttreeitem.h"
 
 #include "hubwidget.h"
 
 
-//BEGIN debug routeines
+//BEGIN debug routines
 #include <sys/time.h>
 // ============================================================================
 /// Returns current time in ms.
@@ -56,8 +59,8 @@ double getms()
 namespace KRufusDc
 {
 
+// constants
 static const int USERLIST_INIT_DELAY = 1000; // delay between widget creation and user list population [ms]
-
 
 // ============================================================================
 // Constructor
@@ -175,32 +178,28 @@ void HubWidget::usersContextMenu( const QPoint & pos )
 	{
 		// get user info
 		UserInfo info = pCurrentItem->data( 0, ROLE_DATA).value< UserInfo >();
-		
-		
 		QString nick = info.nick();
 			
 		// init menu
-		QAction actionFileList( KIcon("view-list-tree"), i18n("Request file list"), this );
 		KMenu menu( this );
 		
+		// title
 		menu.addTitle( nick );
-		menu.addAction( & actionFileList );
 		
+		// actions
+		menu.addAction( ActionFactory::createUserAction( &menu, info, ActionFactory::CopyNick ) );
+		menu.addAction( ActionFactory::createUserAction( &menu, info, ActionFactory::GetFileList ) );
+		menu.addAction( ActionFactory::createUserAction( &menu, info, ActionFactory::MatchQueue ) );
+		menu.addAction( ActionFactory::createUserAction( &menu, info, ActionFactory::GrantSlot ) );
+		menu.addAction(  ActionFactory::createUserAction( &menu, info, ActionFactory::RemoveUserFromQueue ) );
+		
+		// go!
 		QAction* pRes = menu.exec( pUsers->mapToGlobal( pos ) );
-		
-		// handle selection
-		if ( pRes == & actionFileList )
+		if ( pRes )
 		{
-			requestFileList( info );
+			pRes->trigger();
 		}
 	}
-}
-
-// ============================================================================
-// Request file list
-void HubWidget::requestFileList( const UserInfo& info )
-{
-	ClientThread::invoke( "downloadFileList", Q_ARG( QString, info.cid() ) );
 }
 
 // ============================================================================
@@ -272,30 +271,35 @@ void HubWidget::userUpdated( const UserInfo& info )
 	// item exists?
 	QList<QTreeWidgetItem*> items = pUsers->findItems( key, Qt::MatchExactly, COLUMN_NICK );
 	
-	// add new
+	SmartSortTreeItem* pItem = NULL;
+	
 	if ( items.empty() )
 	{
-		QTreeWidgetItem* pItem = new QTreeWidgetItem
-			( pUsers
-			, QStringList() << info.nick() << sizeToString( info.sharesize() ) << info.connection() << info.description()
-			);
-		pItem->setIcon( 0, KIcon("user-online") );
-		
-		pItem->setData( 0, ROLE_DATA, QVariant::fromValue( info ) );
+		pItem = new SmartSortTreeItem( pUsers );
 	}
 	// modify existsing
 	else
 	{
 		Q_ASSERT( items.size() == 1 );
-		
-		QTreeWidgetItem* pItem = items[0];
-		
-		pItem->setText( COLUMN_SHARED, QString::number(info.sharesize()) );
-		pItem->setText( COLUMN_CONECTION, info.connection() );
-		pItem->setText( COLUMN_DESCRIPTION, info.description() );
-		
-		pItem->setData( 0, ROLE_DATA, QVariant::fromValue( info ) );
+		pItem = dynamic_cast<SmartSortTreeItem*>( items[0] );
 	}
+	Q_ASSERT( pItem );
+	
+	// nick
+	pItem->setText( COLUMN_NICK, info.nick() );
+	pItem->setIcon( COLUMN_NICK, KIcon("user-online") );
+	pItem->setData( COLUMN_NICK, ROLE_DATA, QVariant::fromValue( info ) );
+	pItem->setValue( COLUMN_NICK, info.nick().toLower() );
+	
+	// share
+	pItem->setText( COLUMN_SHARED, sizeToString( info.sharesize() ) );
+	pItem->setValue( COLUMN_SHARED, double(info.sharesize()) );
+	
+	// connection
+	pItem->setText( COLUMN_CONECTION, info.connection() );
+	
+	// description
+	pItem->setText( COLUMN_DESCRIPTION, info.description() );
 }
 
 // ============================================================================
@@ -339,15 +343,13 @@ void HubWidget::on(dcpp::ClientListener::UserUpdated, dcpp::Client *, const dcpp
 
 void HubWidget::on(dcpp::ClientListener::UsersUpdated, dcpp::Client *, const dcpp::OnlineUserList &list) throw()
 {
-	//qDebug("HubWidget::on UsersUpdated, user count=%d", list.size() );
-	
 	for( dcpp::OnlineUserList::const_iterator it = list.begin(); it != list.end(); ++it )
 	{
 		UserInfo  info;
 		dcpp::OnlineUser* pUser = *it;
 		info.fromDcppIdentity( *pUser );
 	
-		// TODO add method that takes list in one shot
+		// TODO add method that takes list in one shot?
 		invoke("userUpdated", Q_ARG( UserInfo, info ) );
 	}
 }
@@ -384,27 +386,6 @@ void HubWidget::on(dcpp::ClientListener::HubUpdated, dcpp::Client* pClient ) thr
 }
 
 // ============================================================================
-// Codec for Hub
-QTextCodec* HubWidget::codecForHub( const dcpp::Client* pHub )
-{
-	// TODO remove this method if not used
-	if ( ! pHub )
-	{
-		return QTextCodec::codecForName( "utf-8" );
-	}
-	
-	const char* encoding = pHub->getEncoding().c_str();
-	QTextCodec* result =  QTextCodec::codecForName( encoding );
-	
-	if ( ! result )
-	{
-		return QTextCodec::codecForName( "utf-8" );
-	}
-	
-	return result;
-}
-
-// ============================================================================
 // on chat message
 void HubWidget::on
 	(dcpp::ClientListener::Message
@@ -414,7 +395,6 @@ void HubWidget::on
 	, bool thirdPerson
 	) throw()
 {
-	QTextCodec* pCodec = codecForHub( pHub );
 	QString message	= QString::fromUtf8( rawMessage.c_str() );
 	QString nick    = QString::fromUtf8( user.getIdentity().getNick().c_str() );
 	

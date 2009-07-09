@@ -17,12 +17,11 @@
 #define KRUFUSDCTRANSFERWIDGET_H
 
 // Qt
-class QTreeWidgetItem;
+#include <QTreeWidgetItem>
 
 // dcpp
 #include <dcpp/stdinc.h>
 #include <dcpp/DCPlusPlus.h>
-#include <dcpp/ConnectionManager.h>
 #include <dcpp/DownloadManager.h>
 #include <dcpp/LogManager.h>
 #include <dcpp/QueueManager.h>
@@ -38,6 +37,7 @@ namespace KRufusDc
 class DownloadInfo;
 class TransferInfo;
 class FixedPosItem;
+class SmartSortTreeItem;
 
 /**
  * Widget with lsit of current transfers.
@@ -46,7 +46,6 @@ class FixedPosItem;
 class TransferWidget
 	: public TabContent
 	, private Ui::TransferWidget
-	, public dcpp::ConnectionManagerListener
 	, public dcpp::DownloadManagerListener
 	, public dcpp::QueueManagerListener
 	, public dcpp::UploadManagerListener
@@ -59,6 +58,11 @@ public:
 	
 	/// Destructor
 	virtual ~TransferWidget();
+
+private Q_SLOTS: // UI events
+
+	/// Called when tree widget requests context menu
+	void treeContextMenu(const QPoint& point );
 
 private Q_SLOTS: // inter-thread receivers
 
@@ -79,9 +83,6 @@ private Q_SLOTS: // inter-thread receivers
 	
 	/// Setups widget after content is added
 	void initTransferWidget();
-	
-	/// Updated accumulated data from transfers
-	void updateDownloadFromTransfers( QTreeWidgetItem* pItem );
 	
 	/// Called when upload transfer should be updated
 	void uploadUpdated( const TransferInfo& info );
@@ -107,28 +108,39 @@ private: //  methods
 		ROLE_SORT = Qt::UserRole + 1, ///< Data used to sort
 		ROLE_DATA                     ///< Auxiliary data
 	};
+	
+	/// ITem types
+	enum Types
+	{
+		TYPE_DOWNLOAD = QTreeWidgetItem::UserType + 1, ///< Item represents download
+		TYPE_USER, ///< Item represents user
+		TYPE_FIXED, ///< Item is fixed
+	};
 
 	/// Initializes downloads list with items fro mdownload queue
 	void initDownloads();
 	
 	/// Updates trabsfer widget with info data
-	void updateDownloadItem( QTreeWidgetItem* , const DownloadInfo& info );
+	void updateDownloadItem( SmartSortTreeItem* , const DownloadInfo& info );
 	
 	/// Finds download with specified TTH
-	QTreeWidgetItem* findDownload( const QString& TTH );
+	SmartSortTreeItem* findDownload( const QString& TTH );
 	
 	/// Updates doenload-transfer item
-	void updateDownloadTransferItem( QTreeWidgetItem* pItem, const TransferInfo& info );
+	void updateTransferItem( SmartSortTreeItem* pItem, const TransferInfo& info );
 
 	/// find dowlaod transfer
-	QTreeWidgetItem* findDownloadTransfer( QTreeWidgetItem* pParent, const QString& CID );
+	SmartSortTreeItem* findDownloadTransfer( SmartSortTreeItem* pParent, const QString& CID );
 	
 	/// Updates upload item
-	void updateUploadItem( QTreeWidgetItem* pItem, const TransferInfo& info );
+	void updateUploadItem( SmartSortTreeItem* pItem, const TransferInfo& info );
 	
 	/// Find item for upload
-	QTreeWidgetItem* findUpload( const TransferInfo& info );
+	SmartSortTreeItem* findUpload( const TransferInfo& info );
 
+	/// Updated accumulated data from transfers
+	void updateDownloadFromTransfers( SmartSortTreeItem* pItem );
+	
 
 private: // data
 
@@ -152,12 +164,6 @@ protected: // Listener methods
 	virtual void on(dcpp::DownloadManagerListener::Tick, const dcpp::DownloadList& dls) throw();
 	virtual void on(dcpp::DownloadManagerListener::Complete, dcpp::Download* dl) throw();
 	virtual void on(dcpp::DownloadManagerListener::Failed, dcpp::Download* dl, const std::string& reason) throw();
-	// ConnectionManager
-	virtual void on(dcpp::ConnectionManagerListener::Added, dcpp::ConnectionQueueItem* cqi) throw();
-	virtual void on(dcpp::ConnectionManagerListener::Connected, dcpp::ConnectionQueueItem* cqi) throw();
-	virtual void on(dcpp::ConnectionManagerListener::Removed, dcpp::ConnectionQueueItem* cqi) throw();
-	virtual void on(dcpp::ConnectionManagerListener::Failed, dcpp::ConnectionQueueItem* cqi, const std::string&) throw();
-	virtual void on(dcpp::ConnectionManagerListener::StatusChanged, dcpp::ConnectionQueueItem* cqi) throw();
 	// QueueManager
 	virtual void on(dcpp::QueueManagerListener::Finished, dcpp::QueueItem* qi, const std::string&, int64_t size) throw();
 	virtual void on(dcpp::QueueManagerListener::Removed, dcpp::QueueItem* qi) throw();

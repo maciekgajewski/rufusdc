@@ -81,7 +81,6 @@ public:
 	{
 		return _isFileList;
 	}
-	
 
 private:
 	State _state;            ///< Transfer state (download specific)

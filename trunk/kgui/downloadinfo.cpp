@@ -44,7 +44,8 @@ void DownloadInfo::fromQueueItem( dcpp::QueueItem* pItem )
 	
 	_TTH = pItem->getTTH().toBase32().c_str();
 	_onlineUsers = pItem->countOnlineUsers();
-	_path = QString::fromUtf8( pItem->getTargetFileName().c_str() );
+	//_path = QString::fromUtf8( pItem->getTargetFileName().c_str() ); TODO this only givces base name
+	_path = QString::fromUtf8( pItem->getTarget().c_str() );
 	_size = pItem->getSize();
 	_transferred = pItem->getDownloadedBytes();
 	

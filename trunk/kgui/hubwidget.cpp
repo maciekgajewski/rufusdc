@@ -294,7 +294,8 @@ void HubWidget::userUpdated( const UserInfo& info )
 	// share
 	pItem->setText( COLUMN_SHARED, sizeToString( info.sharesize() ) );
 	pItem->setValue( COLUMN_SHARED, double(info.sharesize()) );
-	
+	pItem->setTextAlignment( COLUMN_SHARED, Qt::AlignRight );
+
 	// connection
 	pItem->setText( COLUMN_CONECTION, info.connection() );
 	
@@ -381,7 +382,10 @@ void HubWidget::on(dcpp::ClientListener::GetPassword, dcpp::Client *) throw()
 
 void HubWidget::on(dcpp::ClientListener::HubUpdated, dcpp::Client* pClient ) throw()
 {
-	invoke( "setTabTitle", Q_ARG( QString, pClient->getHubName().c_str() ) );
+	QString hubName = QString::fromUtf8( pClient->getHubName().c_str() );
+	QString title = i18n("Hub: %1").arg( hubName );
+	
+	invoke( "setTabTitle", Q_ARG( QString, title ) );
 	// TODO update other data here if needed
 }
 
@@ -408,10 +412,10 @@ void HubWidget::on
 
 // ============================================================================
 // on status message
-void HubWidget::on(dcpp::ClientListener::StatusMessage, dcpp::Client *, const std::string &/*message*/, int /*flag*/) throw()
+void HubWidget::on(dcpp::ClientListener::StatusMessage, dcpp::Client *, const std::string &message, int /*flag*/) throw()
 {
-	qDebug("NOT IMPLEMENTED: HubWidget::on StatusMessage");
-	// TODO
+	QString msg = i18n("Hub status is: %1").arg( QString::fromUtf8( message.c_str() ) );
+	invoke( "addSystemMessage", Q_ARG( QString, msg ) );
 }
 
 void HubWidget::on(dcpp::ClientListener::PrivateMessage, dcpp::Client *, const dcpp::OnlineUser &/*from*/,

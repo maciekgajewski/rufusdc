@@ -101,6 +101,45 @@ QAction* ActionFactory::createUserAction( QObject* pParent, const UserInfo& info
 }
 
 // ============================================================================
+// Create download action
+QAction* ActionFactory::createDownloadAction( QObject* pParent, const DownloadInfo& info, DownloadAction type )
+{
+	initInstance(); // make sure instance is created
+	
+	QAction* pAction = new QAction( pParent );
+	
+	// bind data to action
+	BoundData data;
+	data.type = type;
+	data.data = QVariant::fromValue( info );
+	
+	_pInstance->_binding[ pAction ] = data;
+	connect( pAction, SIGNAL(destroyed( QObject* )), _pInstance, SLOT(actionDeleted( QObject* )) );
+	connect( pAction, SIGNAL(triggered()), _pInstance, SLOT(downloadActionTriggered()) );
+	
+	
+	switch( type )
+	{
+		case CancelDownload:
+			pAction->setText( i18n("Cancel download") );
+			pAction->setIcon( KIcon("button-fewer") );
+			pAction->setToolTip( i18n("Cancel download") );
+			break;
+			
+		case SearchAlternates:
+			pAction->setText( i18n("Search for alternates") );
+			pAction->setIcon( KIcon("edit-find") );
+			pAction->setToolTip( i18n("Search for alternate sources") );
+			break;
+			
+		default:
+			qWarning("Unknown action type!");
+	}
+	
+	return pAction;
+}
+
+// ============================================================================
 // Action deleted
 void ActionFactory::actionDeleted( QObject* pAction )
 {
@@ -154,6 +193,42 @@ void ActionFactory::userActionTriggered()
 		default:
 			qWarning("ActionFactory::userActionTriggered: Unknown action type!");
 	}
+}
+
+// ============================================================================
+// Download acton triggered
+void ActionFactory::downloadActionTriggered()
+{
+	QObject* pAction = sender();
+	if ( ! pAction )
+	{
+		qWarning("ActionFactory::userActionTriggere: can't find action!");
+		return;
+	}
+	
+	if ( ! _binding.contains( pAction ) )
+	{
+		qWarning("ActionFactory::userActionTriggere: can't find bindings for action!");
+	}
+	
+	BoundData& data = _binding[ pAction ];
+	DownloadInfo info = data.data.value< DownloadInfo >();
+	
+	switch( data.type )
+	{
+		case CancelDownload:
+			ClientThread::invoke("cancelDownload", Q_ARG( QString, info.path() ) );
+			break;
+			
+		case SearchAlternates:
+			// TODO
+			qDebug("TODO: search for alternates");
+			break;
+			
+		default:
+			qWarning("Unknown action type!");
+	}
+	
 }
 
 } // namespace

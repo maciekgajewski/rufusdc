@@ -234,8 +234,8 @@ private:
 };
 
 // Shorthand accessor macros
-#define SETTING(k) (SettingsManager::getInstance()->get(SettingsManager::k, true))
-#define BOOLSETTING(k) (SettingsManager::getInstance()->getBool(SettingsManager::k, true))
+#define SETTING(k) (dcpp::SettingsManager::getInstance()->get(dcpp::SettingsManager::k, true))
+#define BOOLSETTING(k) (dcpp::SettingsManager::getInstance()->getBool(dcpp::SettingsManager::k, true))
 
 } // namespace dcpp
 

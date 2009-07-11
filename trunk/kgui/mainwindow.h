@@ -74,7 +74,8 @@ private Q_SLOTS:
 
 	/// File list downloaded
 	///@param path path to file list file
-	void fileListDownloaded( const QString& path );
+	///@param cid user information
+	void fileListDownloaded( const QString& path, const QString& cid );
 
 protected: // event handlers
 

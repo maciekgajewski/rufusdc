@@ -16,17 +16,14 @@
 #ifndef KRUFUSDCFILELISTWIDGET_H
 #define KRUFUSDCFILELISTWIDGET_H
 
-// boost
-#include <boost/shared_ptr.hpp>
-
 // Qt
 #include <QTreeWidget>
-class QDomElement;
 
-namespace RufusDc
-{
-	class FileList;
-}
+// dcpp
+#include <dcpp/stdinc.h>
+#include <dcpp/DCPlusPlus.h>
+#include <dcpp/ClientManager.h>
+#include <dcpp/DirectoryListing.h>
 
 // local
 #include "tabcontent.h"
@@ -46,19 +43,21 @@ class FileListWidget : public TabContent
 	Q_OBJECT
 
 public:
+
+	/// Constructor
+	///@param parent parent widget
 	FileListWidget( QWidget* parent );
 	virtual ~FileListWidget();
 	
 	/**
 	 * @brief Loads file list file
-	 * Loads and parses XML data contained within the file list.
-	 * If file is .bz2, is is decompressed.
 	 * @param  path file path
+	 * @param cid user id
 	 */
-	void loadFromFile( const QString& path );
+	void loadFromFile( const QString& path, const QString& cid );
 
-	/// Loads the list from XML data
-	void loadFromXML( const QByteArray& xml );
+	/// Loads from internal listing object (_pListing)
+	void loadFromListing();
 	
 private:
 
@@ -66,7 +65,8 @@ private:
 	enum Columns
 	{
 		ColumnName = 0,  ///< File name
-		ColumnSize       ///< File size
+		ColumnSize,      ///< File size
+		ColumnTTH,       ///< File hash
 	};
 	
 	/// Roles for auxiliary data
@@ -75,7 +75,8 @@ private:
 		RoleSize = Qt::UserRole + 2611, ///< File size 
 		RoleTTH,                        ///< TTH
 		RoleType,                       ///< Type (Dir or File );
-		RolePath                        ///< Path to file
+		RolePath,                       ///< Path to file
+		RolePointer,                    ///< Pointer to DirectoryListing obj
 	};
 	
 	/// Item type
@@ -88,17 +89,17 @@ private:
 	/// Inside tree widget
 	QTreeWidget* _pTree;
 
-	/// Creates directory item from XML element
-	QTreeWidgetItem* createDirectoryItem( const QDomElement& element, const QString& parentPath );
+	/// Creates directory item from DCPP dir description
+	QTreeWidgetItem* createDirectoryItem( dcpp::DirectoryListing::Directory* pDir, const QString& parentPath );
 	
-	/// Createsfile item from XML element
-	QTreeWidgetItem* createFileItem( const QDomElement& element, const QString& parentPath );
+	/// Createsfile item from DCPP file description
+	QTreeWidgetItem* createFileItem( dcpp::DirectoryListing::File* pFile, const QString& parentPath );
 	
 	/// Opens context menu
 	virtual void contextMenuEvent( QContextMenuEvent* pEvent );
 	
-	/// Decompresses BZ2
-	static QByteArray decompressBZ2( const QByteArray& compressed );
+	/// Dir list representation
+	dcpp::DirectoryListing* _pListing;
 };
 
 }

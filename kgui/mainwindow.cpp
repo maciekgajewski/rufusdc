@@ -157,10 +157,10 @@ void MainWindow::connectToHub( const QString& addr, const QString& encoding )
 
 // ============================================================================
 // File list downloaded
-void MainWindow::fileListDownloaded( const QString& path )
+void MainWindow::fileListDownloaded( const QString& path, const QString& cid )
 {
 	FileListWidget* pWidget = new FileListWidget( this );
-	pWidget->loadFromFile( path );
+	pWidget->loadFromFile( path, cid );
 	int idx = _pTabs->addTab( pWidget );
 	_pTabs->setCurrentIndex( idx );
 }
@@ -200,12 +200,12 @@ void MainWindow::on(dcpp::QueueManagerListener::Finished, dcpp::QueueItem* qi, c
 {
 	if ( qi->isSet( dcpp::QueueItem::FLAG_CLIENT_VIEW | dcpp::QueueItem::FLAG_USER_LIST) )
 	{
-		dcpp::UserPtr user = qi->getDownloads()[0]->getUser();
 		QString listName = QString::fromUtf8( qi->getListName().c_str() );
 		
-		qDebug("list downloaded: %s", qi->getListName().c_str() );
+		dcpp::UserPtr user = qi->getDownloads()[0]->getUser();
+		QString cid = user->getCID().toBase32().c_str();
 		
-		invoke("fileListDownloaded", Q_ARG( QString, listName ) );
+		invoke("fileListDownloaded", Q_ARG( QString, listName ), Q_ARG( QString, cid ) );
 	}
 }
 

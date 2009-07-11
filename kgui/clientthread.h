@@ -81,6 +81,10 @@ private Q_SLOTS: // call these via 'invoke'
 	///@param cid user's cid, base32 encoded
 	void removeUserFromQueue( const QString& cid );
 
+	/// Cancels download
+	///@param path download target path
+	void cancelDownload( const QString& path );
+
 private:
 
 	/// Pointer to apps main window

@@ -690,7 +690,7 @@ void TransferWidget::treeContextMenu(const QPoint& point )
 		return;
 	}
 	// user item
-	else if ( type = TYPE_USER )
+	else if ( type == TYPE_USER )
 	{
 		// get user info
 		TransferInfo transfer = pCurrentItem->data( 0, ROLE_DATA).value< TransferInfo >();
@@ -718,6 +718,28 @@ void TransferWidget::treeContextMenu(const QPoint& point )
 			pRes->trigger();
 		}
 		
+	}
+	else if ( type == TYPE_DOWNLOAD )
+	{
+		// get user info
+		DownloadInfo info = pCurrentItem->data( 0, ROLE_DATA).value< DownloadInfo >();
+			
+		// init menu
+		KMenu menu( this );
+		
+		// title
+		menu.addTitle( pCurrentItem->text(0) );
+		
+		// actions
+		menu.addAction( ActionFactory::createDownloadAction( &menu, info, ActionFactory::CancelDownload ) );
+		menu.addAction( ActionFactory::createDownloadAction( &menu, info, ActionFactory::SearchAlternates ) );
+		
+		// go!
+		QAction* pRes = menu.exec( pTree->mapToGlobal( point ) );
+		if ( pRes )
+		{
+			pRes->trigger();
+		}
 	}
 
 }

@@ -222,6 +222,14 @@ void ClientThread::removeUserFromQueue( const QString& cid )
 	}
 }
 
+// ============================================================================
+// Cance ldownload
+void ClientThread::cancelDownload( const QString& path )
+{
+	dcpp::QueueManager::getInstance()->remove( path.toUtf8().data() ) ;
+}
+
+
 } // ns
 
 // EOF

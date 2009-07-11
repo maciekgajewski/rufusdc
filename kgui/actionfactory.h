@@ -24,6 +24,7 @@ class QAction;
 
 // local
 #include "userinfo.h"
+#include "downloadinfo.h"
 
 namespace KRufusDc
 {
@@ -48,10 +49,30 @@ public:
 		RemoveUserFromQueue	///< Remove user from queue
 	};
 	
+	/// Actions related to download
+	enum DownloadAction
+	{
+		CancelDownload,		///< Cancel download, remove from queue
+		SearchAlternates,	///< Search for alternate sources
+	};
+	
+	/// Actions related to files in file list
+	enum FileListAction
+	{
+		Download,		///< Download file
+	}; // TODO probably not used
+	
 	/// Creates action
 	///@param pParent parent object
+	///@param info related info
 	///@param type action type
 	static QAction* createUserAction( QObject* pParent, const UserInfo& info, UserAction type );
+
+	/// Creates download-related action
+	///@param pParent parent object
+	///@param info related info
+	///@param type action type
+	static QAction* createDownloadAction( QObject* pParent, const DownloadInfo& info, DownloadAction type );
 
 private Q_SLOTS:	// user-related actions
 
@@ -60,6 +81,9 @@ private Q_SLOTS:	// user-related actions
 
 	/// Handles user action trigger
 	void userActionTriggered();
+
+	/// Handles download action trigger
+	void downloadActionTriggered();
 
 private: // data
 

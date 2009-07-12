@@ -84,6 +84,12 @@ private Q_SLOTS: // call these via 'invoke'
 	/// Cancels download
 	///@param path download target path
 	void cancelDownload( const QString& path );
+	
+	/// Removes fniished download from list
+	void removeFinishedDownload( const QString& path );
+	
+	/// Removes all finished downloads
+	void removeAllFinishedDownloads();
 
 private:
 

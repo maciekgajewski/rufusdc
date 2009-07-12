@@ -89,7 +89,7 @@ QAction* ActionFactory::createUserAction( QObject* pParent, const UserInfo& info
 			
 		case RemoveUserFromQueue:
 			pAction->setText( i18n("Remove from queue") );
-			pAction->setIcon( KIcon("button-fewer") );
+			pAction->setIcon( KIcon("edit-delete") );
 			pAction->setToolTip( i18n("Remove user from download queue") );
 			break;
 	
@@ -122,7 +122,7 @@ QAction* ActionFactory::createDownloadAction( QObject* pParent, const DownloadIn
 	{
 		case CancelDownload:
 			pAction->setText( i18n("Cancel download") );
-			pAction->setIcon( KIcon("button-fewer") );
+			pAction->setIcon( KIcon("edit-delete") );
 			pAction->setToolTip( i18n("Cancel download") );
 			break;
 			

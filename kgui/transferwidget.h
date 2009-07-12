@@ -93,7 +93,7 @@ private Q_SLOTS: // inter-thread receivers
 	void uploadRemoved( const TransferInfo& info );
 
 	/// Called when new finished item is added
-	void finishedAdded( const DownloadInfo& info );
+	void finishedUpdated( const DownloadInfo& info );
 	
 	/// Called when fnished download is removed
 	void finishedRemoved( const QString& path );
@@ -158,6 +158,10 @@ private: //  methods
 	
 	/// Clears fishedd ownload list
 	void removeAllFinishedFiles();
+	
+	/// Finds finished by path
+	SmartSortTreeItem* findFinished( const QString& path );
+	
 	
 private: // data
 

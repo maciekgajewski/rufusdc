@@ -26,6 +26,7 @@
 #include <dcpp/QueueManager.h>
 #include <dcpp/UploadManager.h>
 #include <dcpp/FinishedManager.h>
+#include <dcpp/SearchManager.h>
 
 // local
 #include "mainwindow.h"
@@ -221,6 +222,10 @@ void ClientThread::removeUserFromQueue( const QString& cid )
 	{
 		dcpp::QueueManager::getInstance()->removeSource(user, dcpp::QueueItem::Source::FLAG_REMOVED);
 	}
+	else
+	{
+		qDebug("ClientThread::removeUserFromQueue: can't find user!");
+	}
 }
 
 // ============================================================================
@@ -244,6 +249,21 @@ void ClientThread::removeAllFinishedDownloads()
 {
 	dcpp::FinishedManager::getInstance()->removeAll( false ); // false=downloads
 	qDebug("Client thread- removed all");
+}
+
+// ============================================================================
+// search for alternates
+void ClientThread::searchForAlternates( const QString& tth )
+{
+	std::string name = tth.toUtf8().data();
+	
+	dcpp::SearchManager::getInstance()->search
+		( name	// name
+		, 0		// size
+		, dcpp::SearchManager::TYPE_TTH // type mode (?)
+		, dcpp::SearchManager::SIZE_DONTCARE // size mode
+		, "ras" // TODO use random token
+		);
 }
 
 } // ns

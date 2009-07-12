@@ -221,8 +221,7 @@ void ActionFactory::downloadActionTriggered()
 			break;
 			
 		case SearchAlternates:
-			// TODO
-			qDebug("TODO: search for alternates");
+			ClientThread::invoke("searchForAlternates", Q_ARG( QString, info.TTH() ) );
 			break;
 			
 		default:

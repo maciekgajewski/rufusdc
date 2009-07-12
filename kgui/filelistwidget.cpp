@@ -17,6 +17,7 @@
 // qt
 #include <QContextMenuEvent>
 #include <QVBoxLayout>
+#include <QFileInfo>
 
 // KDE
 #include <KIcon>
@@ -54,6 +55,7 @@ FileListWidget::FileListWidget( QWidget* parent )
 	// init columns
 	_pTree->setHeaderLabels( QStringList() << i18n("Name") << i18n("Size") << i18n("TTH") );
 	_pTree->setSortingEnabled( true );
+	_pTree->setAlternatingRowColors( true );
 	
 	// init visual tab properties
 	setTabTitle( i18n("File list") );
@@ -116,13 +118,13 @@ void FileListWidget::loadFromListing()
 	dcpp::DirectoryListing::Directory::Iter dirIt;
 	for ( dirIt = pRoot->directories.begin(); dirIt != pRoot->directories.end(); ++dirIt )
 	{
-		_pTree->addTopLevelItem( createDirectoryItem( *dirIt, "/" ) );
+		_pTree->addTopLevelItem( createDirectoryItem( *dirIt, PATH_SEPARATOR_STR ) );
 	}
 	// add files
 	dcpp::DirectoryListing::File::Iter fileIt;
 	for ( fileIt = pRoot->files.begin(); fileIt != pRoot->files.end(); ++fileIt )
 	{
-		_pTree->addTopLevelItem( createFileItem( *fileIt, "/" ) );
+		_pTree->addTopLevelItem( createFileItem( *fileIt, PATH_SEPARATOR_STR ) );
 	}
 	
 	// set first coulm width to some value (do not use 'fit t content', as the content is looooong)
@@ -241,10 +243,21 @@ void FileListWidget::contextMenuEvent( QContextMenuEvent* pEvent )
 		dcpp::DirectoryListing::File* pFile 
 			= (dcpp::DirectoryListing::File*)pItem->data( 0, RolePointer ).value<void*>();
 		
+		// create target path
+		std::string path = SETTING(DOWNLOAD_DIRECTORY) + pFile->getName();
+		
 		// handle selection
 		if ( pRes == & actionDownloadFile )
 		{
-			_pListing->download( pFile, SETTING(DOWNLOAD_DIRECTORY), false, false ); // false = no view, no high-prio
+			qDebug("Downloading file: %s", path.c_str() );
+			try
+			{
+				_pListing->download( pFile, path, false, false ); // false = no view, no high-prio
+			}
+			catch( const std::exception& e )
+			{
+				qDebug("Error downloading file: %s", e.what() );
+			}
 		}
 	}
 	// file
@@ -263,10 +276,21 @@ void FileListWidget::contextMenuEvent( QContextMenuEvent* pEvent )
 		dcpp::DirectoryListing::Directory* pDir 
 			= (dcpp::DirectoryListing::Directory*)pItem->data( 0, RolePointer ).value<void*>();
 		
+		// create target path
+		std::string path = SETTING(DOWNLOAD_DIRECTORY) + pDir->getName();
+		
 		// handle selection
 		if ( pRes == & actionDownload )
 		{
-			_pListing->download( pDir, SETTING(DOWNLOAD_DIRECTORY), false ); // false = no high-prio
+			qDebug("Downloading dir: %s", path.c_str() );
+			try
+			{
+				_pListing->download( pDir, path, false ); // false = no high-prio
+			}
+			catch( const std::exception& e )
+			{
+				qDebug("Error downloading dir: %s", e.what() );
+			}
 		}
 	}
 }

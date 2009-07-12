@@ -26,6 +26,7 @@
 #include <dcpp/LogManager.h>
 #include <dcpp/QueueManager.h>
 #include <dcpp/UploadManager.h>
+#include <dcpp/FinishedManager.h>
 
 // local
 #include "tabcontent.h"
@@ -49,6 +50,7 @@ class TransferWidget
 	, public dcpp::DownloadManagerListener
 	, public dcpp::QueueManagerListener
 	, public dcpp::UploadManagerListener
+	, public dcpp::FinishedManagerListener
 {
 	Q_OBJECT
 public:
@@ -90,6 +92,15 @@ private Q_SLOTS: // inter-thread receivers
 	/// Called when upload transfer should be removed
 	void uploadRemoved( const TransferInfo& info );
 
+	/// Called when new finished item is added
+	void finishedAdded( const DownloadInfo& info );
+	
+	/// Called when fnished download is removed
+	void finishedRemoved( const QString& path );
+	
+	/// All finished download are removed
+	void allFinishedRemoved();
+
 private: //  methods
 
 	/// Tree widget items
@@ -109,12 +120,13 @@ private: //  methods
 		ROLE_DATA                     ///< Auxiliary data
 	};
 	
-	/// ITem types
+	/// Item types
 	enum Types
 	{
 		TYPE_DOWNLOAD = QTreeWidgetItem::UserType + 1, ///< Item represents download
 		TYPE_USER, ///< Item represents user
 		TYPE_FIXED, ///< Item is fixed
+		TYPE_FINISHED, ///< Finished item
 	};
 
 	/// Initializes downloads list with items fro mdownload queue
@@ -141,7 +153,12 @@ private: //  methods
 	/// Updated accumulated data from transfers
 	void updateDownloadFromTransfers( SmartSortTreeItem* pItem );
 	
-
+	/// Removedfniished file from list
+	void removeFinishedFile( const DownloadInfo& info );
+	
+	/// Clears fishedd ownload list
+	void removeAllFinishedFiles();
+	
 private: // data
 
 	/// Fixed tree item - parent of all active downloads
@@ -176,9 +193,15 @@ protected: // Listener methods
 	virtual void on(dcpp::UploadManagerListener::Tick, const dcpp::UploadList& uls) throw();
 	virtual void on(dcpp::UploadManagerListener::Complete, dcpp::Upload* ul) throw();
 	virtual void on(dcpp::UploadManagerListener::Failed, dcpp::Upload* ul, const std::string& reason) throw();
+	// Finished manager
+	virtual void on(dcpp::FinishedManagerListener::AddedFile, bool upload, const std::string &file, const dcpp::FinishedFileItemPtr &item) throw();
+	virtual void on(dcpp::FinishedManagerListener::UpdatedFile, bool upload, const std::string &file, const dcpp::FinishedFileItemPtr &item) throw();
+	virtual void on(dcpp::FinishedManagerListener::RemovedFile, bool upload, const std::string &file) throw();
+	virtual void on(dcpp::FinishedManagerListener::RemovedAll, bool upload) throw();
 
 };
 
 }
 
 #endif
+

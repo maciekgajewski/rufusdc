@@ -18,6 +18,7 @@
 #include <dcpp/stdinc.h>
 #include <dcpp/DCPlusPlus.h>
 #include <dcpp/QueueItem.h>
+#include <dcpp/FinishedItem.h>
 
 // local
 #include "downloadinfo.h"
@@ -63,8 +64,20 @@ void DownloadInfo::fromQueueItem( dcpp::QueueItem* pItem )
 	}
 
 	_isFileList = pItem->isSet( dcpp::QueueItem::FLAG_CLIENT_VIEW | dcpp::QueueItem::FLAG_USER_LIST);
-
+	_speed = 0.0;
 }
+
+// ============================================================================
+// From finished
+void DownloadInfo::fromFinishedFile( dcpp::FinishedFileItem* pItem, std::string name )
+{
+	_state = FINISHED;
+	_path = QString::fromUtf8( name.c_str() );
+	_size = pItem->getFileSize();
+	_speed = pItem->getAverageSpeed();
+	_isFileList = false;
+}
+	
 
 
 }

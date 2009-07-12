@@ -23,6 +23,7 @@
 namespace dcpp
 {
 	class QueueItem;
+	class FinishedFileItem;
 }
 
 namespace KRufusDc
@@ -48,6 +49,9 @@ public:
 	
 	/// Fills the structure from QueueItem
 	void fromQueueItem( dcpp::QueueItem* pItem );
+	
+	/// Fils the structure from const dcpp::FinishedFileItem
+	void fromFinishedFile( dcpp::FinishedFileItem* pItem, std::string name );
 	
 	/// Returns state
 	State state() const { return _state; }
@@ -82,6 +86,12 @@ public:
 		return _isFileList;
 	}
 
+	double speed() const
+	{
+		return _speed;
+	}
+	
+
 private:
 	State _state;            ///< Transfer state (download specific)
 	
@@ -91,7 +101,7 @@ private:
 	int64_t _size;           ///< File size
 	int64_t _transferred;    ///< Transferred bytes
 	bool    _isFileList;     ///< If tis is file list transfer
-
+	double  _speed;          ///< Average transfer speed
 };
 
 } // ns

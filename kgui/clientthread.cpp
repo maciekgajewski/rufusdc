@@ -25,6 +25,7 @@
 #include <dcpp/ConnectionManager.h>
 #include <dcpp/QueueManager.h>
 #include <dcpp/UploadManager.h>
+#include <dcpp/FinishedManager.h>
 
 // local
 #include "mainwindow.h"
@@ -229,6 +230,21 @@ void ClientThread::cancelDownload( const QString& path )
 	dcpp::QueueManager::getInstance()->remove( path.toUtf8().data() ) ;
 }
 
+// ============================================================================
+// Remove finished download
+void ClientThread::removeFinishedDownload( const QString& path )
+{
+	dcpp::FinishedManager::getInstance()->remove( false, path.toUtf8().data() );
+	qDebug("client thread: file removed: %s", path.toUtf8().data() );
+}
+
+// ============================================================================
+// Remove all finished downloads
+void ClientThread::removeAllFinishedDownloads()
+{
+	dcpp::FinishedManager::getInstance()->removeAll( false ); // false=downloads
+	qDebug("Client thread- removed all");
+}
 
 } // ns
 

@@ -150,8 +150,10 @@ void TransferWidget::downloadRemoved( const DownloadInfo& info )
 	// find appropriate item
 	SmartSortTreeItem* pItem = findDownload( info.TTH() );
 
-	Q_ASSERT( pItem );
-	delete pItem; // have no mercy!
+	if( pItem )
+	{
+		delete pItem; // have no mercy!
+	}
 }
 
 // ============================================================================
@@ -162,7 +164,7 @@ SmartSortTreeItem* TransferWidget::findDownload( const QString& TTH )
 	QList<QTreeWidgetItem *> items;
 	
 	QList<QTreeWidgetItem*> parents;
-	parents << _pInactiveDownloadsItem << _pDownloadsItem << _pFinishedDownloadsItem;
+	parents << _pInactiveDownloadsItem << _pDownloadsItem;
 	Q_FOREACH( QTreeWidgetItem* parent, parents )
 	{
 		int childCount = parent->childCount();
@@ -232,22 +234,20 @@ void TransferWidget::updateDownloadFromTransfers( SmartSortTreeItem* pItem )
 {
 	int childCount = pItem->childCount();
 	double speed = 0;
-	int64_t maxTime = 0;
 	for ( int i = 0; i < childCount; i++ )
 	{
 		QTreeWidgetItem* pChild = pItem->child(i);
 		TransferInfo info = pChild->data( 0, ROLE_DATA ).value<TransferInfo>();
 		
 		speed += info.averageSpeed();
-		maxTime = qMax( maxTime, info.secondsLeft() );
-	}
+}
 	
 	DownloadInfo info = pItem->data( 0, ROLE_DATA ).value<DownloadInfo>();
 	
 	int64_t bytesRemaining = info.size() - info.transferred();
 	int64_t timeCalculated = bytesRemaining/speed;
 	
-	int64_t time = qMax( timeCalculated, maxTime );
+	int64_t time = timeCalculated; // previouslu here was more complicated formula, that proven to be less acurate
 	
 	// speed
 	pItem->setText( COLUMN_SPEED, speedToString( speed ) );
@@ -338,9 +338,13 @@ void TransferWidget::downloadUpdated( const DownloadInfo& info )
 
 // ============================================================================
 // add finished
-void TransferWidget::finishedAdded( const DownloadInfo& info )
+void TransferWidget::finishedUpdated( const DownloadInfo& info )
 {
-	SmartSortTreeItem* pItem = new SmartSortTreeItem( TYPE_FINISHED );
+	SmartSortTreeItem* pItem = findFinished( info.path() );
+	if ( ! pItem )
+	{
+		pItem = new SmartSortTreeItem( TYPE_FINISHED );
+	}
 	updateDownloadItem( pItem, info );
 }
 
@@ -376,6 +380,10 @@ void TransferWidget::updateDownloadItem( SmartSortTreeItem* pItem, const Downloa
 		pParent = _pDownloadsItem;
 		icon = KIcon("user-online");
 	}
+	
+	// set alignment
+	pItem->setTextAlignment( COLUMN_TIME_LEFT, Qt::AlignRight );
+	pItem->setTextAlignment( COLUMN_SPEED, Qt::AlignRight );
 	
 	// set parent
 	QTreeWidgetItem* pCurrentParent = pItem->parent();
@@ -559,6 +567,17 @@ SmartSortTreeItem* TransferWidget::findUpload( const TransferInfo& info )
 // Finished removed
 void TransferWidget::finishedRemoved( const QString& path )
 {
+	SmartSortTreeItem* pItem = findFinished( path );
+	if ( pItem )
+	{
+		delete pItem;
+	}
+}
+
+// ============================================================================
+// Find finished by path
+SmartSortTreeItem* TransferWidget::findFinished( const QString& path )
+{
 	int childCount = _pFinishedDownloadsItem->childCount();
 	for ( int i = 0; i < childCount; ++i )
 	{
@@ -568,11 +587,13 @@ void TransferWidget::finishedRemoved( const QString& path )
 		
 		if ( info.path() == path )
 		{
-			delete pItem;
-			return;
+			return dynamic_cast<SmartSortTreeItem*>( pItem );
 		}
 	}
+	
+	return NULL;
 }
+
 
 // ============================================================================
 // All finishedremoved
@@ -640,10 +661,12 @@ void TransferWidget::on(dcpp::DownloadManagerListener::Failed, dcpp::Download* d
 void TransferWidget::on(dcpp::QueueManagerListener::Finished, dcpp::QueueItem* qi, const std::string&, int64_t size) throw()
 {
 	//qDebug("TransferWidget: QueueManagerListener::Finished");
-	DownloadInfo info;
+/*	DownloadInfo info;
 	info.fromQueueItem( qi );
 	
-	invoke( "downloadUpdated", Q_ARG( DownloadInfo, info ) );	
+	invoke( "downloadUpdated", Q_ARG( DownloadInfo, info ) );	*/
+	// TODO this is not used now. Remove this is not used anymore
+	// TODO fnished manager is used instead tyo gt finished files
 }
 
 void TransferWidget::on(dcpp::QueueManagerListener::Removed, dcpp::QueueItem* qi) throw()
@@ -859,14 +882,14 @@ void TransferWidget::removeAllFinishedFiles()
 // on added finished file
 void TransferWidget::on(dcpp::FinishedManagerListener::AddedFile, bool upload, const std::string &file, const dcpp::FinishedFileItemPtr &item) throw()
 {
-	qDebug("Added finihsed file: %s. upload: %d, fill: %d", file.c_str(),
-		int(upload), int(item->isFull()) );
+	//qDebug("Added finihsed file: %s. upload: %d, fill: %d", file.c_str(),
+	//	int(upload), int(item->isFull()) );
 	if ( (!upload) && item->isFull() )
 	{
 		DownloadInfo info;
 		info.fromFinishedFile( item.get(), file );
 	
-		invoke("finishedAdded", Q_ARG( DownloadInfo, info ) );
+		invoke("finishedUpdated", Q_ARG( DownloadInfo, info ) );
 	}
 }
 
@@ -874,8 +897,15 @@ void TransferWidget::on(dcpp::FinishedManagerListener::AddedFile, bool upload, c
 // on update finished file
 void TransferWidget::on(dcpp::FinishedManagerListener::UpdatedFile, bool upload, const std::string &file, const dcpp::FinishedFileItemPtr &item) throw()
 {
-	//qDebug("Added updated file: %s", file.c_str() );
-	// TODO remove if not used
+	//qDebug("Updated finihsed file: %s. upload: %d, fill: %d", file.c_str(),
+	//	int(upload), int(item->isFull()) );
+	if ( (!upload) && item->isFull() )
+	{
+		DownloadInfo info;
+		info.fromFinishedFile( item.get(), file );
+	
+		invoke("finishedUpdated", Q_ARG( DownloadInfo, info ) );
+	}
 }
 
 // ============================================================================

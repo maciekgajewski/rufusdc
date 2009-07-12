@@ -29,6 +29,7 @@
 #include <dcpp/stdinc.h>
 #include <dcpp/DCPlusPlus.h>
 #include <dcpp/QueueManager.h>
+#include <dcpp/SearchManager.h>
 
 namespace KRufusDc
 {
@@ -43,6 +44,7 @@ namespace KRufusDc
 */
 class MainWindow : public KMainWindow
 	, public dcpp::QueueManagerListener
+	, public dcpp::SearchManagerListener
 {
 	Q_OBJECT
 public:
@@ -91,6 +93,9 @@ protected: // DC++ event handlers
 
 	// QueueManager
 	virtual void on(dcpp::QueueManagerListener::Finished, dcpp::QueueItem* qi, const std::string&, int64_t size) throw();
+	
+	// SearchManager
+	virtual void on(dcpp::SearchManagerListener::SR, const dcpp::SearchResultPtr& pResult) throw();
 
 private:
 	

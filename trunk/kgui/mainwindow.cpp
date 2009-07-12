@@ -28,6 +28,7 @@
 #include <dcpp/DCPlusPlus.h>
 #include <dcpp/QueueManager.h>
 #include <dcpp/Download.h>
+#include <dcpp/SearchResult.h>
 
 // local
 #include "connectdialog.h"
@@ -58,14 +59,18 @@ MainWindow::MainWindow( QWidget* pParent )
 		);
 	pSystray->show();
 	
+	// register yourself as a listener
 	dcpp::QueueManager::getInstance()->addListener(this);
+	dcpp::SearchManager::getInstance()->addListener(this);
 }
 
 // ============================================================================
 // Destructor
 MainWindow::~MainWindow()
 {
+	// unregister
 	dcpp::QueueManager::getInstance()->removeListener(this);
+	dcpp::SearchManager::getInstance()->removeListener(this);
 }
 
 // ============================================================================
@@ -207,8 +212,22 @@ void MainWindow::on(dcpp::QueueManagerListener::Finished, dcpp::QueueItem* qi, c
 		
 		invoke("fileListDownloaded", Q_ARG( QString, listName ), Q_ARG( QString, cid ) );
 	}
+	// TODO notify here
 }
 
+// ============================================================================
+// On search result
+void MainWindow::on(dcpp::SearchManagerListener::SR, const dcpp::SearchResultPtr& pResult) throw()
+{
+	/*
+	std::string token = pResult->getToken();
+	std::string file =  pResult->getFile();
+	std::string tth = pResult->getTTH().toBase32();
+	
+	qDebug("Search result: file=%s, token=%s, tth=%s", file.c_str(), token.c_str(), tth.c_str() );
+	*/
+	// TODO remove if not used
+}
 
 } // ns
 

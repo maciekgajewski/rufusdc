@@ -277,7 +277,7 @@ void FileListWidget::contextMenuEvent( QContextMenuEvent* pEvent )
 			= (dcpp::DirectoryListing::Directory*)pItem->data( 0, RolePointer ).value<void*>();
 		
 		// create target path
-		std::string path = SETTING(DOWNLOAD_DIRECTORY) + pDir->getName();
+		std::string path = SETTING(DOWNLOAD_DIRECTORY);
 		
 		// handle selection
 		if ( pRes == & actionDownload )

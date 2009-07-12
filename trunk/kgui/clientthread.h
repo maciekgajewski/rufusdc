@@ -90,6 +90,10 @@ private Q_SLOTS: // call these via 'invoke'
 	
 	/// Removes all finished downloads
 	void removeAllFinishedDownloads();
+	
+	/// Search for alternates
+	///@param tth hash of searched file
+	void searchForAlternates( const QString& tth );
 
 private:
 

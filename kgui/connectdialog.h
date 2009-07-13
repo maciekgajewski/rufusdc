@@ -41,7 +41,7 @@ public:
 Q_SIGNALS:
 	
 	/// Called when dialog is accepted with address.
-	void addressAccepted( const QString& str, const QString& encoding );
+	void addressAccepted( const QString& str );
 	
 private Q_SLOTS:
 

@@ -36,8 +36,7 @@ public:
 	virtual ~TabWidget();
 	
 	/// Adds tab.
-	///@param pTab tab widget
-	///@return tab index
+	///@return tab widget
 	int addTab( TabContent* pTab );
 	
 private Q_SLOTS:

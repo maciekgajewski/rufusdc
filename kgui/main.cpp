@@ -16,43 +16,22 @@
 
 #include <stdexcept>
 #include <iostream>
-#include <signal.h>
 
 // KDE
-#include <KUniqueApplication>
+#include <KApplication>
 #include <KAboutData>
 #include <KCmdLineArgs>
 #include <QTimer>
 #include <QThreadPool>
 
-// dcpp
-#include "dcpp/stdinc.h"
-#include "dcpp/DCPlusPlus.h"
-#include "dcpp/TimerManager.h"
-
-// local
-#include "userinfo.h"
+#include "client.h"
 #include "mainwindow.h"
-#include "clientthread.h"
-#include "transferinfo.h"
-#include "downloadinfo.h"
 
-// TODO use another facility
-void callBack(void* , const std::string& a)
-{
-	std::cerr << "Loading: " << a << std::endl;
-}
 
 // ============================================================================
 // main
 int main(int argc, char** argv )
 {
-	// meta-types registartion
-	qRegisterMetaType<KRufusDc::UserInfo> ("UserInfo");
-	qRegisterMetaType<KRufusDc::TransferInfo> ("TransferInfo");
-	qRegisterMetaType<KRufusDc::DownloadInfo> ("DownloadInfo");
-	
-	// initialize KDE app
 	KAboutData aboutData
 		( "KRufusDC"                  // app name
 		, 0                           // translation dir
@@ -61,60 +40,33 @@ int main(int argc, char** argv )
 		, ki18n("DC++ client")        // short description
 		, KAboutData::License_GPL_V2  // License
 		, ki18n("(c) 2008 Maciej Gajewski") // copyright statement
-		, ki18n("RufusDC is a KDE4 DC++ client")
-		, "http://code.google.com/p/rufusdc/"
 		);
 	
 	KCmdLineArgs::init( argc, argv, &aboutData );
 	
-	// create app
-	//KUniqueApplication app; // TODO this make debugging difficult
 	KApplication app;
+	KRufusDc::Client client; // client implementation
 
-	// load icon
-	QIcon appIcon;
-	appIcon.addFile(":/resources/logo128.png", QSize(128, 128 ) );
-	appIcon.addFile(":/resources/logo32.png", QSize(32, 32 ) );
-	appIcon.addFile(":/resources/logo16.png", QSize(16, 16 ) );
-	app.setWindowIcon( appIcon );
+	// stop thread from thread pool,
+	// TODO this is possible workaround
+	QThreadPool::globalInstance()->setMaxThreadCount( 0 );
+	
+	KRufusDc::MainWindow* pWin = new KRufusDc::MainWindow( &client );
+	pWin->show();
+
+	QTimer::singleShot( 0, &client, SLOT(start()) ); // start client from within event loop	
+
+	// intercept app quit event
+	QObject::connect( &app, SIGNAL(aboutToQuit()), &client, SLOT(stop()) );
 
 	try
 	{
-		// Start the DC++ client core
-		dcpp::startup(callBack, NULL);
-		dcpp::TimerManager::getInstance()->start();
-		::signal(SIGPIPE, SIG_IGN);
-		
-		// window must be started after dcpp is initialized
-		KRufusDc::MainWindow* pWin = new KRufusDc::MainWindow();
-		
-		KRufusDc::ClientThread clientThread( pWin );
-		
-		pWin->show();
-
-		clientThread.start();
-		
-		KRufusDc::ClientThread::invoke("startListening");
-		KRufusDc::ClientThread::invoke("autoConnect");
-		
-		int result = app.exec();
-		
-		std::cerr << "Stopping client thread..." << std::endl;
-		clientThread.stop();
-		
-		delete pWin;
-		
-		std::cerr << "Shutting down..." << std::endl;
-		dcpp::shutdown();
-		
-		return result;
+		return app.exec();
 	}
 	catch( const std::exception& e )
 	{
 		std::cerr << "Runaway exception: " << e.what() << std::endl;
 	}
-	
-	return -1;
 }
 
 // EOF

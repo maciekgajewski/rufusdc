@@ -14,28 +14,16 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-// Qt
-#include <QCloseEvent>
-
-// KDE
 #include <KLocalizedString>
 #include <KAction>
 #include <KToolBar>
-#include <KSystemTrayIcon>
 
-// dcpp
-#include <dcpp/stdinc.h>
-#include <dcpp/DCPlusPlus.h>
-#include <dcpp/QueueManager.h>
-#include <dcpp/Download.h>
-#include <dcpp/SearchResult.h>
-
-// local
+#include "hub.h"
+#include "client.h"
 #include "connectdialog.h"
 #include "hubwidget.h"
 #include "filelistwidget.h"
 #include "tabwidget.h"
-#include "transferwidget.h"
 
 #include "mainwindow.h"
 
@@ -44,77 +32,43 @@ namespace KRufusDc
 
 // ============================================================================
 // Constructor
-MainWindow::MainWindow( QWidget* pParent )
+MainWindow::MainWindow( Client* pClient, QWidget* pParent )
 		: KMainWindow(pParent)
+		, _pClient( pClient )
 {
+	Q_ASSERT( pClient);
+	
 	initActions();
 	initGui();
 	
-	resize( 800, 600 ); // TODO wild guess, use sessions?
+	resize( 800, 600 );
 	
-	// init systray
-	KSystemTrayIcon* pSystray = new KSystemTrayIcon
-		( QApplication::windowIcon()
-		, this
+	// connect to client
+	connect
+		( pClient
+		, SIGNAL(signalFileListReceived( const boost::shared_ptr<RufusDc::FileList>& ))
+		, SLOT(fileListReceived( const boost::shared_ptr<RufusDc::FileList>&))
 		);
-	pSystray->show();
-	
-	// register yourself as a listener
-	dcpp::QueueManager::getInstance()->addListener(this);
-	dcpp::SearchManager::getInstance()->addListener(this);
 }
 
 // ============================================================================
 // Destructor
 MainWindow::~MainWindow()
 {
-	// unregister
-	dcpp::QueueManager::getInstance()->removeListener(this);
-	dcpp::SearchManager::getInstance()->removeListener(this);
 }
 
 // ============================================================================
 // Init actions
 void MainWindow::initActions()
 {
-	// == main toolbar ==
-	
 	// connect
 	KAction* actionConnect = new KAction( this );
 		actionConnect->setText( i18n("Connect") );
 		actionConnect->setIcon( KIcon("network-connect") );
 		actionConnect->setShortcut( Qt::CTRL + Qt::Key_C );
 		connect( actionConnect, SIGNAL(triggered()), SLOT(onActionConnect()) );
-		
-	// transfers
-	KAction* actionTransfers = new KAction( this );
-		actionTransfers->setText( i18n("Transfers") );
-		actionTransfers->setIcon( KIcon("folder-downloads") );
-		actionTransfers->setShortcut( Qt::CTRL + Qt::Key_T );
-		connect( actionTransfers, SIGNAL(triggered()), SLOT(onActionTransfers()) );
-	
-	
-	toolBar("main")->addAction( actionConnect );
-	toolBar("main")->addAction( actionTransfers );
-}
 
-// ============================================================================
-// Invoke method across threads
-void MainWindow::invoke
-	( const char* method
-	, QGenericArgument val0
-	, QGenericArgument val1
-	, QGenericArgument val2
-	, QGenericArgument val3
-	, QGenericArgument val4
-	)
-{
-	QMetaObject::invokeMethod
-		( this
-		, method
-		, Qt::QueuedConnection
-		, val0, val1, val2, val3, val4
-		);
+	toolBar("main")->addAction( actionConnect );
 }
 
 // ============================================================================
@@ -124,50 +78,23 @@ void MainWindow::onActionConnect()
 	if ( ! _pDialogConnect )
 	{
 		_pDialogConnect = new ConnectDialog( this );
-		connect
-			( _pDialogConnect
-			, SIGNAL(addressAccepted(QString,QString))
-			, SLOT(connectToHub(QString,QString)) );
+		connect( _pDialogConnect, SIGNAL(addressAccepted(QString)), SLOT(connectToHub(QString)) );
 	}
 	
 	_pDialogConnect->show();
 }
 
 // ============================================================================
-// On action transfers
-void MainWindow::onActionTransfers()
-{
-	if ( ! _pTransfer )
-	{
-		_pTransfer = new TransferWidget( this );
-		int idx = _pTabs->addTab( _pTransfer );
-		_pTabs->setCurrentIndex( idx );
-	}
-	else
-	{
-		_pTabs->setCurrentIndex( _pTabs->indexOf( _pTransfer ) );
-	}
-}
-
-// ============================================================================
 // Connect to hub
-void MainWindow::connectToHub( const QString& addr, const QString& encoding )
+void MainWindow::connectToHub( const QString& str )
 {
-	// TODO make sure the hub is unique
-	// TODO parse addr, use wrapper object
-	HubWidget* pWidget = new HubWidget( addr, encoding, this );
-	_pTabs->addTab( pWidget );
+	Q_ASSERT( _pClient );
 	
-}
-
-// ============================================================================
-// File list downloaded
-void MainWindow::fileListDownloaded( const QString& path, const QString& cid )
-{
-	FileListWidget* pWidget = new FileListWidget( this );
-	pWidget->loadFromFile( path, cid );
-	int idx = _pTabs->addTab( pWidget );
-	_pTabs->setCurrentIndex( idx );
+	Hub* pHub = _pClient->createHub( str );
+	HubWidget* pWidget = new HubWidget( pHub, this );
+	pHub->connect();
+	int index = _pTabs->addTab( pWidget );
+	_pTabs->setCurrentIndex( index );
 }
 
 // ============================================================================
@@ -180,57 +107,14 @@ void MainWindow::initGui()
 }
 
 // ============================================================================
-// Close event
-/*
-void MainWindow::closeEvent( QCloseEvent * event )
+// file list received
+void MainWindow::fileListReceived( const boost::shared_ptr<RufusDc::FileList>& pFileList )
 {
-	//hide();
-	setWindowState( Qt::WindowMinimized );
-	event->ignore();
-}
-*/
-
-// ============================================================================
-// query close
-bool MainWindow::queryClose()
-{
-	// do not close, just hide. closing via systray icon menu 
-	hide();
-	return false;
-}
-
-// ============================================================================
-// On downlopad finished
-void MainWindow::on(dcpp::QueueManagerListener::Finished, dcpp::QueueItem* qi, const std::string&, int64_t size) throw()
-{
-	if ( qi->isSet( dcpp::QueueItem::FLAG_CLIENT_VIEW | dcpp::QueueItem::FLAG_USER_LIST) )
-	{
-		QString listName = QString::fromUtf8( qi->getListName().c_str() );
-		
-		dcpp::UserPtr user = qi->getDownloads()[0]->getUser();
-		QString cid = user->getCID().toBase32().c_str();
-		
-		invoke("fileListDownloaded", Q_ARG( QString, listName ), Q_ARG( QString, cid ) );
-	}
-	// TODO notify here
-}
-
-// ============================================================================
-// On search result
-void MainWindow::on(dcpp::SearchManagerListener::SR, const dcpp::SearchResultPtr& pResult) throw()
-{
-	/*
-	std::string token = pResult->getToken();
-	std::string file =  pResult->getFile();
-	std::string tth = pResult->getTTH().toBase32();
+	FileListWidget* pWidget = new FileListWidget( _pClient, this );
+	pWidget->setFileList( pFileList );
 	
-	qDebug("Search result: file=%s, token=%s, tth=%s", file.c_str(), token.c_str(), tth.c_str() );
-	*/
-	// TODO remove if not used
+	int index = _pTabs->addTab( pWidget );
+	_pTabs->setCurrentIndex( index );
 }
 
-} // ns
-
-// EOF
-
-
+}

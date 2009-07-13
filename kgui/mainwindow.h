@@ -19,85 +19,52 @@
 // boost
 #include <boost/shared_ptr.hpp>
 
+// rufusdc
+#include "rufusdc/filelist.h"
+
 // Qt
 #include <QPointer>
 
 // KDE
 #include <KMainWindow>
 
-// dcpp
-#include <dcpp/stdinc.h>
-#include <dcpp/DCPlusPlus.h>
-#include <dcpp/QueueManager.h>
-#include <dcpp/SearchManager.h>
 
 namespace KRufusDc
 {
 
 	class ConnectDialog;
+	class Client;
 	class TabWidget;
-	class TransferWidget;
 
 /**
 * @brief Apps main window
 * @author Maciek Gajewski <maciej.gajewski0@gmail.com>
 */
 class MainWindow : public KMainWindow
-	, public dcpp::QueueManagerListener
-	, public dcpp::SearchManagerListener
 {
 	Q_OBJECT
 public:
-	MainWindow( QWidget* pParent = NULL );
+	MainWindow( Client* pClient, QWidget* pParent = NULL );
 	virtual ~MainWindow();
-
-	/// Calls method from worker thread. Method must be a slot
-	///@param method method name, w/o signature.
-	void invoke
-		( const char* method
-		, QGenericArgument val0 = QGenericArgument( 0 )
-		, QGenericArgument val1 = QGenericArgument()
-		, QGenericArgument val2 = QGenericArgument()
-		, QGenericArgument val3 = QGenericArgument()
-		, QGenericArgument val4 = QGenericArgument()
-		);
-
+	
 private Q_SLOTS:
 
 	// action handlers
 	
-	void onActionConnect();   	///< Connect action
-	void onActionTransfers();	///< Show transfers action
+	void onActionConnect();   ///< Connect action
 	
 	// other slots
 	
-	/// Connect to hub requested
-	void connectToHub( const QString& str, const QString& encoding );
-
-	/// File list downloaded
-	///@param path path to file list file
-	///@param cid user information
-	void fileListDownloaded( const QString& path, const QString& cid );
-
-protected: // event handlers
-
-	/// Close event handlers - hides window instead of closing it
-	//virtual void closeEvent( QCloseEvent * event ); // TODO trying queryClose instead
+	void connectToHub( const QString& str ); ///< Connect to hub requested
 	
-protected: // KMainWindow
-
-	/// Asks wheter window can be closed
-	virtual bool queryClose();
-
-protected: // DC++ event handlers
-
-	// QueueManager
-	virtual void on(dcpp::QueueManagerListener::Finished, dcpp::QueueItem* qi, const std::string&, int64_t size) throw();
+	// messages from client
 	
-	// SearchManager
-	virtual void on(dcpp::SearchManagerListener::SR, const dcpp::SearchResultPtr& pResult) throw();
+	/// File list was received
+	void fileListReceived( const boost::shared_ptr<RufusDc::FileList>& pFileList );
 
 private:
+
+	Client* _pClient;   ///< DC client implementation;
 	
 	// initializers
 	
@@ -114,11 +81,7 @@ private:
 	
 	// widgets
 	
-	TabWidget* _pTabs;	///< Main tab widget
-	
-	// fixed tabs
-	
-	QPointer<TransferWidget> _pTransfer;	///< Transfers
+	TabWidget* _pTabs;
 	
 	
 };

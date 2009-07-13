@@ -14,17 +14,8 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-// Qt
 #include <QTextCodec>
 
-// dcpp
-#include <dcpp/stdinc.h>
-#include <dcpp/DCPlusPlus.h>
-#include <dcpp/User.h>
-#include <dcpp/Client.h>
-
-// local
-#include "transferinfo.h"
 #include "userinfo.h"
 
 namespace KRufusDc
@@ -37,50 +28,33 @@ UserInfo::UserInfo()
 }
 
 // ============================================================================
-// Copy Constructor
-/* delete if not needed
-UserInfo::UserInfo( const UserInfo& src )
-	: _nick(src._nick)
-	, _description(src._description)
-	, _connection(src._connection)
-	, _status(src._status)
-	, _sharesize(src._sharesize)
-	, _email(src._email)
-	, _cid(src._cid)
-{
-}
-*/
-
-// ============================================================================
 // Destructor
 UserInfo::~UserInfo()
 {
 }
 
 // ============================================================================
-// converter from dcc data type
-void UserInfo::fromDcppIdentity( const dcpp::OnlineUser& user )
+// Converter
+void UserInfo::convert( const RufusDc::UserInfo& info, QTextCodec* pCodec )
 {
-	const dcpp::Identity& identity = user.getIdentity();
+	_sharesize = info.sharesize();
+	_status = info.status();
 	
-	_nick		= QString::fromUtf8( identity.getNick().c_str() );
-	_connection	= identity.getConnection().c_str();
-	_status		= identity.getSID();
-	_sharesize	= identity.getBytesShared();
-	_email		= QString::fromUtf8( identity.getEmail().c_str() );
-	_description	= QString::fromUtf8( identity.getDescription().c_str() );
-	_cid		= QString::fromStdString( user.getUser()->getCID().toBase32() );
-	
+	if ( pCodec )
+	{
+		_nick        = pCodec->toUnicode( info.nick().c_str() );
+		_description = pCodec->toUnicode( info.description().c_str() );
+		_connection  = pCodec->toUnicode( info.connection().c_str() );
+		_email       = pCodec->toUnicode( info.email().c_str() );
+	}
+	else
+	{
+		_nick        = info.nick().c_str();
+		_description = info.description().c_str();
+		_connection  = info.connection().c_str();
+		_email       = info.email().c_str();
+	}
 }
-
-// ============================================================================
-// From transfer info
-void UserInfo::fromTransferInfo( const TransferInfo& transfer )
-{
-	_nick = transfer.userNick();
-	_cid = transfer.CID();
-}
-	
 
 
 }

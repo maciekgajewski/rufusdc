@@ -1,5 +1,4 @@
-// Copyright (C) 2009 Maciek Gajewski <maciej.gajewski0@gmail.com>
-// Uses code from Linux DC++, Copyright © 2004-2008 Jens Oknelid, paskharen@gmail.com 
+// Copyright (C) 2008 Maciek Gajewski <maciej.gajewski0@gmail.com>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,258 +14,165 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-// dc++
-#include <dcpp/stdinc.h>
-#include <dcpp/DCPlusPlus.h>
-#include <dcpp/FavoriteManager.h>
-#include <dcpp/ShareManager.h>
-#include <dcpp/ClientManager.h>
-#include <dcpp/HubEntry.h>
-#include <dcpp/ConnectionManager.h>
-#include <dcpp/QueueManager.h>
-#include <dcpp/UploadManager.h>
-#include <dcpp/FinishedManager.h>
-#include <dcpp/SearchManager.h>
+// WARNING: all this need to be _before_ any Qt includes
 
-// local
-#include "mainwindow.h"
+// boost
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+
+// rufusdc
+#include "rufusdc/client.h"
+#include "rufusdc/hub.h"
+#include "rufusdc/hubmanager.h"
+#include "rufusdc/downloadmanager.h"
+
+// Qt
+#include <QTimer>
+#include <QCoreApplication>
+
 #include "clientthread.h"
 
 namespace KRufusDc
 {
 
-ClientThread* ClientThread::_pInstance = NULL;
+static const int PROCESS_EVENTS_INTERVAL = 1000; // event proceesing interval [ms]
+
 
 // ============================================================================
 // Constructor
-ClientThread::ClientThread( MainWindow* pMainWindow )
- : QObject()
- , _pMainWindow( pMainWindow )
+ClientThread::ClientThread( QObject *parent )
+		: QThread( parent )
 {
-	Q_ASSERT( ! _pInstance );
-	_pInstance = this;
+	_pClient = new RufusDc::Client();
+	_pTimer = NULL;
+	_stopped = false;
+	
+	RufusDc::DownloadManager::ref().signalIncomingFileList.connect
+		( boost::bind( &ClientThread::onFileListReceived, this, _1 )
+		);
 }
 
 // ============================================================================
 // Destructor
 ClientThread::~ClientThread()
 {
-	_pInstance = NULL;
+	delete _pClient;
 }
 
-// ============================================================================
-// Start
-void ClientThread::start()
-{
-	_thread.start();
-	moveToThread( &_thread );
-}
 
 // ============================================================================
-// Stop
-void ClientThread::stop()
+// Run client
+void ClientThread::runClient()
 {
-	_thread.quit();
-	_thread.wait(); // TODO add timeout
-}
-
-// ============================================================================
-// Invoke method across threads
-void ClientThread::invoke
-	( const char* method
-	, QGenericArgument val0
-	, QGenericArgument val1
-	, QGenericArgument val2
-	, QGenericArgument val3
-	, QGenericArgument val4
-	)
-{
-	Q_ASSERT( _pInstance );
+	try
+	{
+		//qDebug("runClient, tid: %u", int(QThread::currentThreadId()) );
 	
-	QMetaObject::invokeMethod
-		( _pInstance
-		, method
-		, Qt::QueuedConnection
-		, val0, val1, val2, val3, val4
-		);
-}
-
-// ============================================================================
-// Start listening
-void ClientThread::startListening()
-{
-	dcpp::SearchManager::getInstance()->disconnect();
-	dcpp::ConnectionManager::getInstance()->disconnect();
-
-	if (dcpp::ClientManager::getInstance()->isActive())
-	{
-		try
+		Q_ASSERT( _pClient );
+		// ok, the message loop is running
+		
+		// attach method to timer
+		_pTimer = new  boost::asio::deadline_timer
+			( _pClient->ioService()
+			, boost::posix_time::milliseconds( PROCESS_EVENTS_INTERVAL )
+			);
+		_pTimer->async_wait( boost::bind( &ClientThread::onTimer, this ) );
+		
+		Q_FOREVER
 		{
-			dcpp::ConnectionManager::getInstance()->listen();
+			_pClient->run();
+			if ( _stopped )
+			{
+				qDebug("ClientThread: Escaping the endless loop");
+				break;
+			}
+			msleep(100); // this parameter should be tuned
 		}
-		catch (const dcpp::Exception &e)
-		{
-			// TODO let user know somehow in GUI
-			/*
-			string primaryText = _("Unable to open TCP/TLS port");
-			string secondaryText = _("File transfers will not work correctly until you change settings or turn off any application that might be using the TCP/TLS port.");
-			typedef Func2<MainWindow, string, string> F2;
-			F2* func = new F2(this, &MainWindow::showMessageDialog_gui, primaryText, secondaryText);
-			WulforManager::get()->dispatchGuiFunc(func);
-			*/
-			qDebug("Unable to open TCP/TLS port");
-		}
-
-		try
-		{
-			dcpp::SearchManager::getInstance()->listen();
-		}
-		catch (const dcpp::Exception &e)
-		{
-			// TODO let user kow somehow in GUI
-			/*
-			string primaryText = _("Unable to open UDP port");
-			string secondaryText = _("Searching will not work correctly until you change settings or turn off any application that might be using the UDP port.");
-			typedef Func2<MainWindow, string, string> F2;
-			F2* func = new F2(this, &MainWindow::showMessageDialog_gui, primaryText, secondaryText);
-			WulforManager::get()->dispatchGuiFunc(func);
-			*/
-			qDebug("Unable to open UDP port");
-		}
+		qDebug("ClientThread: Escaped");
 	}
-
-	dcpp::ClientManager::getInstance()->infoUpdated();
-}
-
-// ============================================================================
-// auto connect
-void ClientThread::autoConnect()
-{
-	dcpp::FavoriteHubEntry *hub;
-	dcpp::FavoriteHubEntryList &l = dcpp::FavoriteManager::getInstance()->getFavoriteHubs();
-
-	for (dcpp::FavoriteHubEntryList::const_iterator it = l.begin(); it != l.end(); ++it)
+	catch( const std::exception& e )
 	{
-		hub = *it;
-
-		if (hub->getConnect())
-		{
-			QString addr     = hub->getServer().c_str();
-			QString encoding = hub->getEncoding().c_str();
-			
-			_pMainWindow->invoke("connectToHub", Q_ARG( QString, addr), Q_ARG( QString, encoding ) );
-		}
+		std::cerr << "Client thread exception: " << e.what() << std::endl;
 	}
+	quit();
 }
 
 // ============================================================================
-// Downloads file list
-void ClientThread::downloadFileList( const QString& cid )
+// Stop client
+void ClientThread::stopClient()
 {
-	dcpp::UserPtr user = dcpp::ClientManager::getInstance()->findUser(dcpp::CID( cid.toStdString() ));
-			
-	if (user)
-	{
-		if (user == dcpp::ClientManager::getInstance()->getMe())
-		{
-			// Don't download file list, open locally instead
-			// TODO
-			qDebug("TODO: open own file list");
-		}
-		else
-		{
-			dcpp::QueueManager::getInstance()->addList(user, std::string(), dcpp::QueueItem::FLAG_CLIENT_VIEW);
-		}
-	}
+	qDebug("ClientThread: Received stop signal (tid: %d)", int(QThread::currentThreadId()));
+	_stopped = true;
+	_pClient->ioService().stop();
 }
 
 // ============================================================================
-// Match queue
-void ClientThread::matchQueue( const QString& cid )
+// Timer handler
+void ClientThread::onTimer()
 {
-	dcpp::UserPtr user = dcpp::ClientManager::getInstance()->findUser(dcpp::CID( cid.toStdString() ));
-			
-	if (user)
-	{
-		if (user == dcpp::ClientManager::getInstance()->getMe())
-		{
-			// Don't download file list, open locally instead
-			// TODO
-			qDebug("TODO: open own file list");
-		}
-		else
-		{
-			dcpp::QueueManager::getInstance()->addList(user, std::string(), dcpp::QueueItem::FLAG_MATCH_QUEUE);
-			// empty string above is a hub hint
-		}
-	}
-}
-
-// ============================================================================
-// Grant extra slot
-void ClientThread::grantSlot( const QString& cid )
-{
-	dcpp::UserPtr user = dcpp::ClientManager::getInstance()->findUser(dcpp::CID( cid.toStdString() ));
-	if (user)
-	{
-		dcpp::UploadManager::getInstance()->reserveSlot( user, std::string() ); // empty string is a hub hint
-	}
-}
-
-// ============================================================================
-// Removes user from queue
-void ClientThread::removeUserFromQueue( const QString& cid )
-{
-	dcpp::UserPtr user = dcpp::ClientManager::getInstance()->findUser(dcpp::CID( cid.toStdString() ));
-	if (user)
-	{
-		dcpp::QueueManager::getInstance()->removeSource(user, dcpp::QueueItem::Source::FLAG_REMOVED);
-	}
-	else
-	{
-		qDebug("ClientThread::removeUserFromQueue: can't find user!");
-	}
-}
-
-// ============================================================================
-// Cance ldownload
-void ClientThread::cancelDownload( const QString& path )
-{
-	dcpp::QueueManager::getInstance()->remove( path.toUtf8().data() ) ;
-}
-
-// ============================================================================
-// Remove finished download
-void ClientThread::removeFinishedDownload( const QString& path )
-{
-	dcpp::FinishedManager::getInstance()->remove( false, path.toUtf8().data() );
-	qDebug("client thread: file removed: %s", path.toUtf8().data() );
-}
-
-// ============================================================================
-// Remove all finished downloads
-void ClientThread::removeAllFinishedDownloads()
-{
-	dcpp::FinishedManager::getInstance()->removeAll( false ); // false=downloads
-	qDebug("Client thread- removed all");
-}
-
-// ============================================================================
-// search for alternates
-void ClientThread::searchForAlternates( const QString& tth )
-{
-	std::string name = tth.toUtf8().data();
+	//qDebug("onTimer, tid: %u", int(QThread::currentThreadId()) );
+	Q_ASSERT( _pTimer );
 	
-	dcpp::SearchManager::getInstance()->search
-		( name	// name
-		, 0		// size
-		, dcpp::SearchManager::TYPE_TTH // type mode (?)
-		, dcpp::SearchManager::SIZE_DONTCARE // size mode
-		, "ras" // TODO use random token
-		);
+	// process events form event loop. This will call all slots
+	QCoreApplication::processEvents();
+	
+	// schedule next meeting
+	_pTimer->expires_at( _pTimer->expires_at() + boost::posix_time::milliseconds( PROCESS_EVENTS_INTERVAL ) );
+	_pTimer->async_wait( boost::bind( &ClientThread::onTimer, this ) );
 }
 
-} // ns
+// ============================================================================
+// Connect hub
+void ClientThread::slotConnectHub( const QString& addr )
+{
+	//qDebug("slotConnectHub, tid: %u", int(QThread::currentThreadId()) );
 
-// EOF
+	boost::shared_ptr<RufusDc::Hub> pHub = RufusDc::HubManager::ref().getHub( qPrintable( addr ) );
+	pHub->connect();
+}
 
+// ============================================================================
+// disconnect hub
+void ClientThread::slotDisconnectHub( const QString& addr )
+{
+	boost::shared_ptr<RufusDc::Hub> pHub = RufusDc::HubManager::ref().getHub( qPrintable( addr ) );
+	pHub->disconnect();
+}
+
+// ============================================================================
+// xml file list received
+void ClientThread::onFileListReceived( const boost::shared_ptr<RufusDc::FileList>& pFileList )
+{
+	QMutexLocker lock( & _fileListMutex );
+	
+	_fileLists.push_back( pFileList );
+	Q_EMIT signalFileListReceived();
+}
+
+// ============================================================================
+// Take file lists
+void ClientThread::takeFileList( boost::shared_ptr<RufusDc::FileList>& pOut )
+{
+	QMutexLocker lock( & _fileListMutex );
+	
+	if ( ! _fileLists.isEmpty() )
+	{
+		pOut = _fileLists.takeFirst();
+	}
+}
+
+// ============================================================================
+// Download file
+void ClientThread::slotDownloadFile
+	( const QByteArray& hub
+	, const QByteArray& nick
+	, const QByteArray& path
+	, const QByteArray& tth
+	, quint64 size )
+{
+	// TODO do something about encoding
+	RufusDc::DownloadManager::ref().downloadFile( (const char*)hub, (const char*)nick, (const char*)path, (const char*)tth, size );
+}
+
+} // namespace

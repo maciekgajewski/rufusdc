@@ -44,10 +44,9 @@ ConnectDialog::~ConnectDialog()
 void ConnectDialog::accept()
 {
 	QString addr = address->currentText();
-	QString encoding = "cp1250"; // TODO add ui for this
 	if ( validate( addr ) )
 	{
-		Q_EMIT addressAccepted( addr, encoding );
+		Q_EMIT addressAccepted( addr );
 		
 		QDialog::accept();
 		

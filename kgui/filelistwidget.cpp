@@ -14,10 +14,16 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
+// std
+#include <stdexcept>
+
+// rufusdc
+#include "rufusdc/filelist.h"
+
 // qt
+#include <QDomDocument>
 #include <QContextMenuEvent>
 #include <QVBoxLayout>
-#include <QFileInfo>
 
 // KDE
 #include <KIcon>
@@ -27,16 +33,9 @@
 #include <KAction>
 #include <KMenu>
 
-// dcpp
-#include <dcpp/stdinc.h>
-#include <dcpp/DCPlusPlus.h>
-#include <dcpp/ClientManager.h>
-#include <dcpp/DirectoryListing.h>
-#include <dcpp/SettingsManager.h>
-
 // local
 #include "utils.h"
-#include "smartsorttreeitem.h"
+#include "client.h"
 #include "filelistwidget.h"
 
 namespace KRufusDc
@@ -44,18 +43,18 @@ namespace KRufusDc
 
 // ============================================================================
 // Constructor
-FileListWidget::FileListWidget( QWidget* parent )
+FileListWidget::FileListWidget( Client* pClient, QWidget* parent )
 	: TabContent( parent )
-	, _pListing( NULL )
+	, _pClient( pClient )
 {
+	Q_ASSERT( pClient );
+	
 	_pTree = new QTreeWidget( this );
 	QVBoxLayout* pLayout = new QVBoxLayout( this );
 	pLayout->addWidget( _pTree );
 	
 	// init columns
-	_pTree->setHeaderLabels( QStringList() << i18n("Name") << i18n("Size") << i18n("TTH") );
-	_pTree->setSortingEnabled( true );
-	_pTree->setAlternatingRowColors( true );
+	_pTree->setHeaderLabels( QStringList() << i18n("Name") << i18n("Size") );
 	
 	// init visual tab properties
 	setTabTitle( i18n("File list") );
@@ -66,170 +65,149 @@ FileListWidget::FileListWidget( QWidget* parent )
 // Destructor
 FileListWidget::~FileListWidget()
 {
-	if ( _pListing ) delete _pListing;
 }
 
 // ============================================================================
-// Load file list
-void FileListWidget::loadFromFile( const QString& path, const QString& cid )
+// Set file list
+void FileListWidget::setFileList( boost::shared_ptr< RufusDc::FileList > pFileList )
 {
-	// Find user
-	dcpp::UserPtr pUser = dcpp::ClientManager::getInstance()->findUser( dcpp::CID( cid.toStdString() ) );
-	if ( ! pUser )
+	_pFileList = pFileList;
+	
+	// parse xml
+	QDomDocument doc;
+	
+	QByteArray data( pFileList->xml().c_str() );
+	
+	if ( ! doc.setContent( data, false ) )
 	{
-		qDebug("File list - can't find user");
-		return;
+		throw std::logic_error("Can't parse XML");
 	}
 	
-	//create dir listing
-	Q_ASSERT( ! _pListing );
-	_pListing = new dcpp::DirectoryListing( pUser );
-	
-	// load file
-	try
+	QDomElement root = doc.documentElement();
+	if ( root.tagName() != "FileListing" )
 	{
-		_pListing->loadFile( path.toUtf8().data() );
-	}
-	catch(...)
-	{
-		qDebug("Error loading from file");
-		return;
+		throw std::logic_error( qPrintable( QString("Can't understand XML, root element id %1").arg(root.tagName()) ) );
 	}
 	
-	// set title from CID
-	std::string nickss = dcpp::ClientManager::getInstance()->getNicks( dcpp::CID( cid.toStdString() ) ).front();
-	QString nick = QString::fromUtf8( nickss.c_str() );
-	setTabTitle( i18n("File list: %1").arg( nick ) );
-	
-	// build tree
-	loadFromListing();
-}
-
-
-// ============================================================================
-// Load from listing
-void FileListWidget::loadFromListing()
-{
 	// populate
 	_pTree->clear();
-	dcpp::DirectoryListing::Directory* pRoot = _pListing->getRoot();
 	
-	// add dirs
-	dcpp::DirectoryListing::Directory::Iter dirIt;
-	for ( dirIt = pRoot->directories.begin(); dirIt != pRoot->directories.end(); ++dirIt )
+	QDomNodeList topLevelElements = root.childNodes();
+	for( int i = 0; i < topLevelElements.size(); i++ )
 	{
-		_pTree->addTopLevelItem( createDirectoryItem( *dirIt, PATH_SEPARATOR_STR ) );
-	}
-	// add files
-	dcpp::DirectoryListing::File::Iter fileIt;
-	for ( fileIt = pRoot->files.begin(); fileIt != pRoot->files.end(); ++fileIt )
-	{
-		_pTree->addTopLevelItem( createFileItem( *fileIt, PATH_SEPARATOR_STR ) );
+		QDomNode node = topLevelElements.at( i );
+		if ( node.isElement() )
+		{
+			QDomElement element = node.toElement();
+			
+			/// directory
+			if ( element.tagName() == "Directory" )
+			{
+				_pTree->addTopLevelItem( createDirectoryItem( element, "/" ) );
+			}
+			else if ( element.tagName() == "File" )
+			{
+				_pTree->addTopLevelItem( createFileItem( element, "/" ) );
+			}
+			else
+			{
+				qWarning("Unkown file list element type: %s", qPrintable( element.tagName() ) );
+			}
+		}
 	}
 	
-	// set first coulm width to some value (do not use 'fit t content', as the content is looooong)
+	// set first coulm with to some value
 	_pTree->setColumnWidth( 0, 250 );
-	_pTree->sortItems( ColumnName,  Qt::AscendingOrder );
+	
+	// change title
+	QString title = QString( i18n("%1's file list")).arg( pFileList->nick().c_str() );
+	setTabTitle( title );
 }
-
 
 // ============================================================================
 // Create directory
-QTreeWidgetItem* FileListWidget::createDirectoryItem( dcpp::DirectoryListing::Directory* pDir, const QString& parentPath )
+QTreeWidgetItem* FileListWidget::createDirectoryItem( const QDomElement& element, const QString& parentPath )
 {
-	QString name = QString::fromUtf8( pDir->getName().c_str() );
-	QString path = parentPath + name + PATH_SEPARATOR_STR;
+	QString name = element.attribute( "Name" );
+	QString path = parentPath + name + "/";
+	QTreeWidgetItem* pDir = new  QTreeWidgetItem();
 	
-	SmartSortTreeItem* pItem = new  SmartSortTreeItem();
+	pDir->setText( ColumnName, name );
+	pDir->setIcon( ColumnName, KIcon("inode-directory") );
 	
-	// text / icon
-	pItem->setText( ColumnName, name );
-	pItem->setIcon( ColumnName, KIcon("inode-directory") );
+	pDir->setData( 0, RoleType, Dir );
+	pDir->setData( 0, RolePath, path );
 	
-	pItem->setData( 0, RoleType, Dir );
-	pItem->setData( 0, RolePath, path );
-	pItem->setData( 0, RolePointer, QVariant::fromValue<void*>( pDir ) );
-	
-	// size
-	int64_t sizeValue = pDir->getTotalSize();
-	QString size = sizeToString( sizeValue );
-	
-	pItem->setText( ColumnSize, size );
-	pItem->setValue( ColumnSize, double(sizeValue) );
-	pItem->setTextAlignment( ColumnSize, Qt::AlignRight );
-	
-	
-	// add subdirs
-	dcpp::DirectoryListing::Directory::Iter dirIt;
-	for ( dirIt = pDir->directories.begin(); dirIt != pDir->directories.end(); ++dirIt )
+	// add children
+	QDomNodeList children = element.childNodes();
+	for( int i = 0; i < children.size(); i++ )
 	{
-		pItem->addChild( createDirectoryItem( *dirIt, path ) );
-	}
-	// add files
-	dcpp::DirectoryListing::File::Iter fileIt;
-	for ( fileIt = pDir->files.begin(); fileIt != pDir->files.end(); ++fileIt )
-	{
-		pItem->addChild( createFileItem( *fileIt, path ) );
+		QDomNode node = children.at( i );
+		if ( node.isElement() )
+		{
+			QDomElement child = node.toElement();
+			
+			/// directory
+			if ( child.tagName() == "Directory" )
+			{
+				pDir->addChild( createDirectoryItem( child, path ) );
+			}
+			else if ( child.tagName() == "File" )
+			{
+				pDir->addChild( createFileItem( child, path ) );
+			}
+			else
+			{
+				qWarning("Unkown file list element type: %s", qPrintable( element.tagName() ) );
+			}
+		}
 	}
 	
-	return pItem;
+	return pDir;
 }
 
 // ============================================================================
 // Create file
-QTreeWidgetItem* FileListWidget::createFileItem( dcpp::DirectoryListing::File* pFile, const QString& parentPath )
+QTreeWidgetItem* FileListWidget::createFileItem( const QDomElement& element, const QString& parentPath )
 {
-	QString name = QString::fromUtf8( pFile->getName().c_str() );
-	int64_t sizeValue = pFile->getSize();
-	QString tth = QString::fromStdString( pFile->getTTH().toBase32() );
+	// decode XML
+	QString name = element.attribute( "Name" );
+	QString size = element.attribute( "Size" );
+	QString tth = element.attribute( "TTH" );
 	QString path = parentPath + name;
 	
+	quint64 sizeValue = size.toLongLong();
 	QString sizeText = sizeToString( sizeValue );
 	
-	SmartSortTreeItem* pItem = new  SmartSortTreeItem();
+	QTreeWidgetItem* pFile = new  QTreeWidgetItem();
 	
-	// name
-	pItem->setText( ColumnName, name );
-	
-	// size
-	pItem->setText( ColumnSize, sizeText );
-	pItem->setValue( ColumnSize, double(sizeValue) );
-	pItem->setTextAlignment( ColumnSize, Qt::AlignRight );
-	
-	// tth
-	pItem->setText( ColumnTTH, tth );
+	pFile->setText( ColumnName, name );
+	pFile->setText( ColumnSize, sizeText );
 	
 	// find icon
 	QString iconName = KMimeType::iconNameForUrl( name );
 	QPixmap icon = KIconLoader::global()->loadMimeTypeIcon( iconName, KIconLoader::Small );
-	pItem->setIcon( ColumnName, icon );
+	pFile->setIcon( ColumnName, icon );
 
-	pItem->setData( 0, RoleSize, qlonglong(sizeValue) );
-	pItem->setData( 0, RoleTTH, tth );
-	pItem->setData( 0, RoleType, File );
-	pItem->setData( 0, RolePath, path );
-	pItem->setData( 0, RolePointer, QVariant::fromValue<void*>( pFile ) );
+	pFile->setData( 0, RoleSize, sizeValue );
+	pFile->setData( 0, RoleTTH, tth );
+	pFile->setData( 0, RoleType, File );
+	pFile->setData( 0, RolePath, path );
 	
-	return pItem;
+	return pFile;
 }
-
 
 // ============================================================================
 // Context
 void FileListWidget::contextMenuEvent( QContextMenuEvent* pEvent )
 {
-	Q_ASSERT( _pListing );
-	
 	QTreeWidgetItem* pItem = _pTree->currentItem();
 	
-	if ( ! pItem )
+	if ( pItem && pItem->data( 0, RoleType ) == File )
 	{
-		return;
-	}
-	
-	// file
-	if ( pItem->data( 0, RoleType ) == File )
-	{
+		
+		// get selection
+		int row = _pTree->selectionModel()->currentIndex().row();
 			
 		// init menu
 		KAction actionDownloadFile( KIcon("go-down"), i18n("Download file"), this );
@@ -240,57 +218,21 @@ void FileListWidget::contextMenuEvent( QContextMenuEvent* pEvent )
 		
 		QAction* pRes = menu.exec( pEvent->globalPos() );
 		
-		dcpp::DirectoryListing::File* pFile 
-			= (dcpp::DirectoryListing::File*)pItem->data( 0, RolePointer ).value<void*>();
-		
-		// create target path
-		std::string path = SETTING(DOWNLOAD_DIRECTORY) + pFile->getName();
-		
 		// handle selection
 		if ( pRes == & actionDownloadFile )
 		{
-			qDebug("Downloading file: %s", path.c_str() );
-			try
-			{
-				_pListing->download( pFile, path, false, false ); // false = no view, no high-prio
-			}
-			catch( const std::exception& e )
-			{
-				qDebug("Error downloading file: %s", e.what() );
-			}
-		}
-	}
-	// file
-	else if ( pItem->data( 0, RoleType ) == Dir )
-	{
-			
-		// init menu
-		KAction actionDownload( KIcon("go-down"), i18n("Download directory"), this );
-		KMenu menu( this );
+			// extract data
+			quint64 size = pItem->data( 0, RoleSize ).value<quint64>();
+			QByteArray tth = pItem->data( 0, RoleTTH ).value<QByteArray>();
+			QByteArray path = pItem->data( 0, RolePath ).value<QByteArray>();
 		
-		menu.addTitle( i18n("Directory") );
-		menu.addAction( & actionDownload );
-		
-		QAction* pRes = menu.exec( pEvent->globalPos() );
-		
-		dcpp::DirectoryListing::Directory* pDir 
-			= (dcpp::DirectoryListing::Directory*)pItem->data( 0, RolePointer ).value<void*>();
-		
-		// create target path
-		std::string path = SETTING(DOWNLOAD_DIRECTORY);
-		
-		// handle selection
-		if ( pRes == & actionDownload )
-		{
-			qDebug("Downloading dir: %s", path.c_str() );
-			try
-			{
-				_pListing->download( pDir, path, false ); // false = no high-prio
-			}
-			catch( const std::exception& e )
-			{
-				qDebug("Error downloading dir: %s", e.what() );
-			}
+			_pClient->downloadFile
+				( _pFileList->hub().c_str()
+				, _pFileList->nick().c_str()
+				, path
+				, tth
+				, size
+				);
 		}
 	}
 }

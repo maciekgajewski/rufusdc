@@ -16,14 +16,17 @@
 #ifndef KRUFUSDCFILELISTWIDGET_H
 #define KRUFUSDCFILELISTWIDGET_H
 
+// boost
+#include <boost/shared_ptr.hpp>
+
 // Qt
 #include <QTreeWidget>
+class QDomElement;
 
-// dcpp
-#include <dcpp/stdinc.h>
-#include <dcpp/DCPlusPlus.h>
-#include <dcpp/ClientManager.h>
-#include <dcpp/DirectoryListing.h>
+namespace RufusDc
+{
+	class FileList;
+}
 
 // local
 #include "tabcontent.h"
@@ -43,30 +46,24 @@ class FileListWidget : public TabContent
 	Q_OBJECT
 
 public:
-
-	/// Constructor
-	///@param parent parent widget
-	FileListWidget( QWidget* parent );
+	FileListWidget( Client* pClient, QWidget* parent );
 	virtual ~FileListWidget();
 	
 	/**
-	 * @brief Loads file list file
-	 * @param  path file path
-	 * @param cid user id
+	 * @brief Set's file list.
+	 * Parses XML data contained within the file list
+	 * @param  pFileList file list pointer
+	 * @exception std::logic_error if can't parse xml
 	 */
-	void loadFromFile( const QString& path, const QString& cid );
+	void setFileList( boost::shared_ptr< RufusDc::FileList > pFileList );
 
-	/// Loads from internal listing object (_pListing)
-	void loadFromListing();
-	
 private:
 
 	/// Columns
 	enum Columns
 	{
 		ColumnName = 0,  ///< File name
-		ColumnSize,      ///< File size
-		ColumnTTH,       ///< File hash
+		ColumnSize       ///< File size
 	};
 	
 	/// Roles for auxiliary data
@@ -75,8 +72,7 @@ private:
 		RoleSize = Qt::UserRole + 2611, ///< File size 
 		RoleTTH,                        ///< TTH
 		RoleType,                       ///< Type (Dir or File );
-		RolePath,                       ///< Path to file
-		RolePointer,                    ///< Pointer to DirectoryListing obj
+		RolePath                        ///< Path to file
 	};
 	
 	/// Item type
@@ -86,20 +82,23 @@ private:
 		Dir   ///< Directory
 	};
 
+	/// Client implementation
+	Client *_pClient;
+	
 	/// Inside tree widget
 	QTreeWidget* _pTree;
 
-	/// Creates directory item from DCPP dir description
-	QTreeWidgetItem* createDirectoryItem( dcpp::DirectoryListing::Directory* pDir, const QString& parentPath );
+	/// The file list
+	boost::shared_ptr< RufusDc::FileList > _pFileList;
 	
-	/// Createsfile item from DCPP file description
-	QTreeWidgetItem* createFileItem( dcpp::DirectoryListing::File* pFile, const QString& parentPath );
+	/// Creates directory item from XML element
+	QTreeWidgetItem* createDirectoryItem( const QDomElement& element, const QString& parentPath );
+	
+	/// Createsfile item from XML element
+	QTreeWidgetItem* createFileItem( const QDomElement& element, const QString& parentPath );
 	
 	/// Opens context menu
 	virtual void contextMenuEvent( QContextMenuEvent* pEvent );
-	
-	/// Dir list representation
-	dcpp::DirectoryListing* _pListing;
 };
 
 }

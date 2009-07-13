@@ -16,24 +16,15 @@
 #ifndef KRUFUSDCUSERINFO_H
 #define KRUFUSDCUSERINFO_H
 
-// Qt
-#include <QMetaType>
+#include "rufusdc/userinfo.h"
 
-// dcpp
-namespace dcpp
-{
-	class OnlineUser;
-}
+class QTextCodec;
 
 namespace KRufusDc
 {
 
-class TransferInfo;
-
 /**
-* @brief Structure containing user information
-* Used to transform user information across
-* threads.
+* @brief Qt wrapper arounf RufusDc::UserInfo
 * @author Maciek Gajewski <maciej.gajewski0@gmail.com>
 */
 class UserInfo
@@ -41,15 +32,16 @@ class UserInfo
 
 public:
 	UserInfo();
-	//UserInfo( const UserInfo& src ); // TODO delete if not needed
 	~UserInfo();
 	
-	/// Fills in user info with dcpp's user indentity
-	void fromDcppIdentity( const dcpp::OnlineUser& user );
-	
-	/// Creates sekeleton user info from transfer info
-	void fromTransferInfo( const TransferInfo& transfer );
-	
+	/**
+		* @brief Converts from RufusDc::UserInfo.
+		* Uses text codec to decode raw strings.
+		* @param info orginal info
+		* @param pCodec (optional) codec used to convert strings
+		*/
+	void convert( const RufusDc::UserInfo& info, QTextCodec* pCodec = NULL );
+
 	void setNick( const QString& value )
 	{
 		_nick = value;
@@ -115,12 +107,6 @@ public:
 	{
 		return _email;
 	}
-
-	QString cid() const
-	{
-		return _cid;
-	}
-	
 private:
 
 	QString  _nick;
@@ -129,12 +115,9 @@ private:
 	uint8_t  _status;
 	uint64_t _sharesize;
 	QString  _email;
-	QString  _cid;
 };
 
 }
-
-Q_DECLARE_METATYPE(KRufusDc::UserInfo);
 
 #endif // KRUFUSDCUSERINFO_H
 

@@ -53,28 +53,15 @@ Q_SIGNALS:
 	/// Tab iconchanged
 	void iconChanged( const QIcon& icon );
 
-protected Q_SLOTS: // slots
+protected:
 
 	/// Sets tab title
 	void setTabTitle( const QString& title );
 	
 	/// Sets tab icon
 	void setTabIcon( const QIcon& icon );
-	
-protected: // methods
-	
-	/// Calls method from worker thread. Method must be a slot
-	///@param method method name, w/o signature.
-	void invoke
-		( const char* method
-		, QGenericArgument val0 = QGenericArgument( 0 )
-		, QGenericArgument val1 = QGenericArgument()
-		, QGenericArgument val2 = QGenericArgument()
-		, QGenericArgument val3 = QGenericArgument()
-		, QGenericArgument val4 = QGenericArgument()
-		);
 
-private: // data
+private:
 
 	/// Current tab title
 	QString _tabTitle;

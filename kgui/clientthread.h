@@ -1,6 +1,4 @@
-// Copyright (C) 2009 Maciek Gajewski <maciej.gajewski0@gmail.com>
-// Uses code from Linux DC++, Copyright © 2004-2008 Jens Oknelid, paskharen@gmail.com 
-//
+// Copyright (C) 2008 Maciek Gajewski <maciej.gajewski0@gmail.com>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,98 +13,113 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#ifndef KRUFUSDCCLIENTTHREAD_H
+#define KRUFUSDCCLIENTTHREAD_H
 
-#ifndef CLIENTTHREAD_H
-#define CLIENTTHREAD_H
+// boost
+#include <boost/asio/deadline_timer.hpp>
+#include <boost/shared_ptr.hpp>
 
 // Qt
 #include <QThread>
+#include <QMutex>
+#include <QList>
+
+namespace RufusDc
+{
+	class Client;
+	class Hub;
+	class FileList;
+}
+
 
 namespace KRufusDc
 {
 
-class MainWindow;
-
 /**
-* Client thread. Performs client-related actions in separate thread.
+* @brief Thread runing RufusDc::Client
 * @author Maciek Gajewski <maciej.gajewski0@gmail.com>
 */
-class ClientThread : public QObject
+class ClientThread : public QThread
 {
-Q_OBJECT
-public:
-    
-	ClientThread( MainWindow* pMainWindow );
-	virtual ~ClientThread();
+	Q_OBJECT
 
-	/// Starts client thread
-	void start();
+public:
+
+	// Hub message type
+	enum MessageType
+	{
+		System, ///< System message
+		Chat    ///< Chat message
+	};
+
+	ClientThread( QObject *parent = 0 );
+	virtual ~ClientThread();
 	
-	/// Stops client thread
-	void stop();
+	/**
+	 * @brief Access to RufusDc::Client
+	 * @return reference to underlying client object
+	 */
+	RufusDc::Client& client() { return *_pClient; }
 	
-	/// invokes slot in client thread
-	/// Calls method in client thread. Method must be a slot
-	///@param method method name, w/o signature.
-	static void invoke
-		( const char* method
-		, QGenericArgument val0 = QGenericArgument( 0 )
-		, QGenericArgument val1 = QGenericArgument()
-		, QGenericArgument val2 = QGenericArgument()
-		, QGenericArgument val3 = QGenericArgument()
-		, QGenericArgument val4 = QGenericArgument()
+	/// Takes file list from corss-thread container.
+	/// Leaves out buffer intouched when no file lists present.
+	void takeFileList( boost::shared_ptr<RufusDc::FileList>& pOut );
+	
+Q_SIGNALS:
+
+	// x-thread signals
+	
+	/// Emitted when file list buffer contains nex file list.
+	/// After receivingm use takeFileList to obtain actualfile lsit from corss-thread container
+	void signalFileListReceived();
+	
+public Q_SLOTS:
+
+	// cross-thread slots
+	void slotConnectHub( const QString& addr );
+	void slotDisconnectHub( const QString& addr );
+	void slotDownloadFile
+		( const QByteArray& hub
+		, const QByteArray& nick
+		, const QByteArray& path
+		, const QByteArray& tth
+		, quint64 size
 		);
 	
-private Q_SLOTS: // call these via 'invoke'
-
-	/// Starts active client
-	void startListening();
+	/// Runs client form within the message loop
+	void runClient();
 	
-	/// Auto-connects to favorite hubs
-	void autoConnect();
-	
-	/// Download user file list
-	///@param cid user's cid, base32 encoded
-	void downloadFileList( const QString& cid );
-
-	/// Matches queue with users file list
-	///@param cid user's cid, base32 encoded
-	void matchQueue( const QString& cid );
-	
-	/// Grants extraslot to user
-	///@param cid user's cid, base32 encoded
-	void grantSlot( const QString& cid );
-	
-	/// Grants extraslot to user
-	///@param cid user's cid, base32 encoded
-	void removeUserFromQueue( const QString& cid );
-
-	/// Cancels download
-	///@param path download target path
-	void cancelDownload( const QString& path );
-	
-	/// Removes fniished download from list
-	void removeFinishedDownload( const QString& path );
-	
-	/// Removes all finished downloads
-	void removeAllFinishedDownloads();
-	
-	/// Search for alternates
-	///@param tth hash of searched file
-	void searchForAlternates( const QString& tth );
+	/// Stops client ant hte entire thread
+	void stopClient();
 
 private:
 
-	/// Pointer to apps main window
-	MainWindow* _pMainWindow;
+	// boost slots and handlers
+
+	/// Called by ASIO timer
+	void onTimer();
 	
-	/// Actual thread
-	QThread	_thread;
+	/// Called when client recives xml file list
+	void onFileListReceived( const boost::shared_ptr<RufusDc::FileList>& pFileList );
 	
-	/// Static instance pointer
-	static ClientThread* _pInstance;
+private:
+
+	RufusDc::Client* _pClient;
+	
+	boost::asio::deadline_timer* _pTimer;
+	
+	bool _stopped; ///< STOP flag
+	
+	QMutex _fileListMutex; /// Mutex guarding file lists
+	QList< boost::shared_ptr<RufusDc::FileList> > _fileLists; /// File lists
+
 };
 
-} // namespace
+} // namespcae
 
-#endif // CLIENTTHREAD_H
+#endif // KRUFUSDCCLIENTTHREAD_H
+
+// EOF
+
+

@@ -26,6 +26,7 @@ namespace KRufusDc
 {
 
 class MainWindow;
+class SearchQuery;
 
 /**
 * Client thread. Performs client-related actions in separate thread.
@@ -94,6 +95,9 @@ private Q_SLOTS: // call these via 'invoke'
 	/// Search for alternates
 	///@param tth hash of searched file
 	void searchForAlternates( const QString& tth );
+	
+	/// Search
+	void search( const SearchQuery& query );
 
 private:
 

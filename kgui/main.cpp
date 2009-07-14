@@ -36,6 +36,7 @@
 #include "clientthread.h"
 #include "transferinfo.h"
 #include "downloadinfo.h"
+#include "searchquery.h"
 
 // TODO use another facility
 void callBack(void* , const std::string& a)
@@ -51,6 +52,7 @@ int main(int argc, char** argv )
 	qRegisterMetaType<KRufusDc::UserInfo> ("UserInfo");
 	qRegisterMetaType<KRufusDc::TransferInfo> ("TransferInfo");
 	qRegisterMetaType<KRufusDc::DownloadInfo> ("DownloadInfo");
+	qRegisterMetaType<KRufusDc::SearchQuery> ("SearchQuery");
 	
 	// initialize KDE app
 	KAboutData aboutData

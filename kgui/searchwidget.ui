@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SearchWidget</class>
+ <widget class="QWidget" name="SearchWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>520</width>
+    <height>441</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Search form</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Search:</string>
+       </property>
+       <property name="buddy">
+        <cstring>pSearchLine</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="KLineEdit" name="pSearchLine">
+       <property name="toolTip">
+        <string>Type searched string here</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pSearchButton">
+       <property name="toolTip">
+        <string>Start searching</string>
+       </property>
+       <property name="text">
+        <string>Search</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>File type:</string>
+       </property>
+       <property name="buddy">
+        <cstring>pTypeCombo</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="KComboBox" name="pTypeCombo">
+       <property name="toolTip">
+        <string>Select file type</string>
+       </property>
+       <item>
+        <property name="text">
+         <string>Any</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Audio</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Archive</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Document</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Executable</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Picture</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Video</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Directory</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>TTH</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>Size:</string>
+       </property>
+       <property name="buddy">
+        <cstring>pSizeCombo</cstring>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="KComboBox" name="pSizeCombo">
+       <property name="toolTip">
+        <string>Select size filtering method</string>
+       </property>
+       <item>
+        <property name="text">
+         <string>Any</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>At least</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>At most</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="KDoubleNumInput" name="pSizeInput">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="toolTip">
+        <string>Size threshold</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="KComboBox" name="pUnitsCombo">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="toolTip">
+        <string>Size units</string>
+       </property>
+       <item>
+        <property name="text">
+         <string>B</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>KB</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>MB</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>GB</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QTreeWidget" name="treeWidget">
+     <column>
+      <property name="text">
+       <string notr="true">1</string>
+      </property>
+     </column>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>KComboBox</class>
+   <extends>QComboBox</extends>
+   <header>kcombobox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>KDoubleNumInput</class>
+   <extends>QWidget</extends>
+   <header>knuminput.h</header>
+  </customwidget>
+  <customwidget>
+   <class>KLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>klineedit.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>pSearchLine</sender>
+   <signal>returnPressed()</signal>
+   <receiver>SearchWidget</receiver>
+   <slot>onSearch()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>114</x>
+     <y>32</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>140</x>
+     <y>87</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pSearchButton</sender>
+   <signal>clicked()</signal>
+   <receiver>SearchWidget</receiver>
+   <slot>onSearch()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>484</x>
+     <y>25</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>521</x>
+     <y>41</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pSizeCombo</sender>
+   <signal>activated(int)</signal>
+   <receiver>SearchWidget</receiver>
+   <slot>onSizeMethodChanged(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>316</x>
+     <y>52</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>519</x>
+     <y>94</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>onSearch()</slot>
+  <slot>onSizeMethodChanged(int)</slot>
+ </slots>
+</ui>

@@ -30,7 +30,10 @@
 
 // local
 #include "mainwindow.h"
+#include "searchquery.h"
+
 #include "clientthread.h"
+
 
 namespace KRufusDc
 {
@@ -264,6 +267,13 @@ void ClientThread::searchForAlternates( const QString& tth )
 		, dcpp::SearchManager::SIZE_DONTCARE // size mode
 		, "ras" // TODO use random token
 		);
+}
+
+// ============================================================================
+// Search 
+void ClientThread::search( const SearchQuery& query )
+{
+	qDebug("search!");
 }
 
 } // ns

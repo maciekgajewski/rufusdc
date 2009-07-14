@@ -36,6 +36,7 @@
 #include "filelistwidget.h"
 #include "tabwidget.h"
 #include "transferwidget.h"
+#include "searchwidget.h"
 
 #include "mainwindow.h"
 
@@ -93,9 +94,16 @@ void MainWindow::initActions()
 		actionTransfers->setShortcut( Qt::CTRL + Qt::Key_T );
 		connect( actionTransfers, SIGNAL(triggered()), SLOT(onActionTransfers()) );
 	
+	// search
+	KAction* actionSearch = new KAction( this );
+		actionSearch->setText( i18n("Search") );
+		actionSearch->setIcon( KIcon("edit-find") );
+		actionSearch->setShortcut( Qt::CTRL + Qt::Key_S );
+		connect( actionSearch, SIGNAL(triggered()), SLOT(onActionSearch()) );
 	
 	toolBar("main")->addAction( actionConnect );
 	toolBar("main")->addAction( actionTransfers );
+	toolBar("main")->addAction( actionSearch );
 }
 
 // ============================================================================
@@ -148,6 +156,23 @@ void MainWindow::onActionTransfers()
 		_pTabs->setCurrentIndex( _pTabs->indexOf( _pTransfer ) );
 	}
 }
+
+// ============================================================================
+// oOn searcfh
+void MainWindow::onActionSearch()
+{
+	if ( ! _pSearch )
+	{
+		_pSearch = new SearchWidget( this );
+		int idx = _pTabs->addTab( _pSearch );
+		_pTabs->setCurrentIndex( idx );
+	}
+	else
+	{
+		_pTabs->setCurrentIndex( _pTabs->indexOf( _pSearch ) );
+	}
+}
+
 
 // ============================================================================
 // Connect to hub

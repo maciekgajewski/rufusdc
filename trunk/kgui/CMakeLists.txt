@@ -21,6 +21,8 @@ set(
 	downloadinfo.cpp
 	actionfactory.cpp
 	smartsorttreeitem.cpp
+	searchwidget.cpp
+	searchquery.cpp
 )
 
 qt4_add_resources( SOURCES resources.qrc )
@@ -32,6 +34,7 @@ kde4_add_ui_files(
 	hubwidget.ui
 	connectdialog.ui
 	transferwidget.ui
+	searchwidget.ui
 )
 
 include_directories( ${KDE4_INCLUDES} ${RUFUSDC_SOURCE_DIR}  ${RUFUSDC_BINARY_DIR}/kgui )

@@ -37,6 +37,7 @@ namespace KRufusDc
 	class ConnectDialog;
 	class TabWidget;
 	class TransferWidget;
+	class SearchWidget;
 
 /**
 * @brief Apps main window
@@ -68,6 +69,7 @@ private Q_SLOTS:
 	
 	void onActionConnect();   	///< Connect action
 	void onActionTransfers();	///< Show transfers action
+	void onActionSearch();		///< Show search tab
 	
 	// other slots
 	
@@ -119,6 +121,7 @@ private:
 	// fixed tabs
 	
 	QPointer<TransferWidget> _pTransfer;	///< Transfers
+	QPointer<SearchWidget>   _pSearch;		///< Search tab
 	
 	
 };

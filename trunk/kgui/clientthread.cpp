@@ -273,7 +273,13 @@ void ClientThread::searchForAlternates( const QString& tth )
 // Search 
 void ClientThread::search( const SearchQuery& query )
 {
-	qDebug("search!");
+	dcpp::SearchManager::getInstance()->search
+		( query.text().toUtf8().data()
+		, query.size()
+		, dcpp::SearchManager::TypeModes( query.type() )
+		, dcpp::SearchManager::SizeModes( query.sizeMethod() )
+		, query.token().toUtf8().data()
+		);
 }
 
 } // ns

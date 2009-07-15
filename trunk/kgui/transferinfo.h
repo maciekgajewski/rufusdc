@@ -25,6 +25,7 @@ namespace dcpp
 	class Upload;
 	class Download;
 	class Transfer;
+	class SearchResult;
 }
 
 namespace KRufusDc
@@ -54,6 +55,9 @@ public:
 	
 	/// Fills the structure with data from cpp::Download
 	void fromDcppDownload( dcpp::Download* pDownload );
+	
+	/// Fills the structure form dcpp search result
+	void fromSearchResult( dcpp::SearchResult* pResult );
 
 public: // accessors
 
@@ -116,6 +120,17 @@ public: // accessors
 		return _CID;
 	}
 
+	QString slotString() const
+	{
+		return _slotString;
+	}	
+
+	bool isDirectory() const
+	{
+		return _isDirectory;
+	}
+	
+
 private: // method
 
 	/// Copies data from dcpp structure
@@ -137,6 +152,9 @@ private: // data
 	int64_t _secondsLeft;    ///< Estimated time remaining
 	QString _userNick;       ///< User nick
 	QString _userHub;        ///< User hub
+	
+	QString _slotString;     ///< SLot info (used for search result)
+	bool    _isDirectory;    ///< Tru if it is directory
 
 };
 

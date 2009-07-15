@@ -21,7 +21,7 @@
 #include <dcpp/Download.h>
 #include <dcpp/User.h>
 #include <dcpp/ClientManager.h>
-
+#include <dcpp/SearchResult.h>
 
 
 // local
@@ -81,9 +81,35 @@ void TransferInfo::fromDcppTransfer( dcpp::Transfer* pTransfer )
 	// hub
 	sl = dcpp::ClientManager::getInstance()->getHubNames( pTransfer->getUser()->getCID() );
 	if ( sl.size() > 0 ) _userHub = QString::fromUtf8( sl.front().c_str() );
+	
+	_isDirectory = false;
 }
 
-
+// ============================================================================
+// From search result
+void TransferInfo::fromSearchResult( dcpp::SearchResult* pResult )
+{
+	_TTH = QString::fromStdString( pResult->getTTH().toBase32() );
+	_size = pResult->getSize();
+	_CID = pResult->getUser()->getCID().toBase32().c_str();
+	
+	// path
+	_path = QString::fromUtf8( pResult->getFile().c_str() );
+	_path.replace( '\\', '/' );
+	
+	// nick
+	dcpp::StringList sl = dcpp::ClientManager::getInstance()->getNicks( pResult->getUser()->getCID() );
+	if ( sl.size() > 0 ) _userNick = QString::fromUtf8( sl.front().c_str() );
+	
+	// hub
+	sl = dcpp::ClientManager::getInstance()->getHubNames( pResult->getUser()->getCID() );
+	if ( sl.size() > 0 ) _userHub = QString::fromUtf8( sl.front().c_str() );
+	
+	// slots
+	_slotString = QString::fromUtf8( pResult->getSlotString().c_str() );
+	
+	_isDirectory = pResult->getType() == dcpp::SearchResult::TYPE_DIRECTORY;
+}
 
 } // namespace
 

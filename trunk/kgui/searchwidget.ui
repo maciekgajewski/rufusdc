@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>520</width>
-    <height>441</height>
+    <width>645</width>
+    <height>461</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -155,12 +155,12 @@
       </widget>
      </item>
      <item>
-      <widget class="KDoubleNumInput" name="pSizeInput">
+      <widget class="QDoubleSpinBox" name="pSizeInput">
        <property name="enabled">
         <bool>false</bool>
        </property>
-       <property name="toolTip">
-        <string>Size threshold</string>
+       <property name="maximum">
+        <double>2048.000000000000000</double>
        </property>
       </widget>
      </item>
@@ -197,10 +197,33 @@
     </layout>
    </item>
    <item>
-    <widget class="QTreeWidget" name="treeWidget">
+    <widget class="QTreeWidget" name="pResults">
+     <property name="sortingEnabled">
+      <bool>true</bool>
+     </property>
      <column>
       <property name="text">
-       <string notr="true">1</string>
+       <string notr="true">File name</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Size</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>User/Hub</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Slots</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>TTH</string>
       </property>
      </column>
     </widget>
@@ -212,11 +235,6 @@
    <class>KComboBox</class>
    <extends>QComboBox</extends>
    <header>kcombobox.h</header>
-  </customwidget>
-  <customwidget>
-   <class>KDoubleNumInput</class>
-   <extends>QWidget</extends>
-   <header>knuminput.h</header>
   </customwidget>
   <customwidget>
    <class>KLineEdit</class>

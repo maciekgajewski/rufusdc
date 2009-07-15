@@ -30,6 +30,8 @@
 
 namespace KRufusDc {
 
+class TransferInfo;
+
 /**
 * Search tab
 * @author Maciek Gajewski <maciej.gajewski0@gmail.com>
@@ -56,6 +58,14 @@ protected Q_SLOTS:
 	/// Timer handler. Updates 'time to search' info.
 	void onTimeToSearchTimer();
 	
+	/// Deactivates receiving of search results
+	void deactivateSearch();
+	
+private Q_SLOTS: // interthred slots
+
+	/// On search result
+	void onResult( const TransferInfo& info );
+	
 protected: // DC++ event handlers
 
 	// SearchManager
@@ -63,7 +73,24 @@ protected: // DC++ event handlers
 
 private: // data
 
+	/// Result tree columns
+	enum Columns
+	{
+		COLUMN_NAME,	///< File name
+		COLUMN_SIZE,	///< File size
+		COLUMN_USER,	///< User info
+		COLUMN_SLOTS,	///< Slosts
+		COLUMN_TTH,		///< TTH
+	};
+	
+	/// Data roles
+	enum Roles
+	{
+		ROLE_DATA = Qt::UserRole + 372
+	};
+
 	QTimer _timeToSearchTimer;	///< Timer used to dsplay 'time to search'
+	bool _searchActive;			///< Flag indicating if the window should accept search results
 
 };
 
